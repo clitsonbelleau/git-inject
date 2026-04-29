@@ -1,0 +1,330 @@
+#!/usr/bin/env bash
+
+# git-inject: Merge a newer commit into an older commit
+# Usage: git inject <target> [<patch>] [--copy]
+#        git inject (--continue | --abort | --revert | --clear)
+
+# Author:  Clitson Belleau <dev@clitson.nl>
+# License: GPL-3.0
+
+if ! GIT_DIR=$(git rev-parse --git-dir 2>/dev/null); then
+    printf 'fatal: not a git repository\n'
+    exit 1
+fi
+
+# Store the state of the injection process
+STATE_DIR="$GIT_DIR/INJECT_STATE"
+REVERT_HEAD="$GIT_DIR/INJECT_REVERT"
+REVERT_BRANCH="$GIT_DIR/INJECT_BRANCH"
+BACKUP_HEAD="$STATE_DIR/BACKUP_HEAD"
+
+inject_autostash(){
+    old_stash=$(git rev-parse --quiet --verify refs/stash)
+    git stash --include-untracked --message="INJECT: Save working tree" >/dev/null 2>&1
+    new_stash=$(git rev-parse --quiet --verify refs/stash)
+    [ "$old_stash" != "$new_stash" ] && echo "$new_stash" > "$STATE_DIR/stash"
+}
+
+inject_cleanup() {
+    # Return to the invocation branch before popping stash
+    if [ -f "$STATE_DIR/ORIG_BRANCH" ]; then
+        origin=$(<"$STATE_DIR/ORIG_BRANCH")
+        if [ -n "$origin" ] && [ "$(git branch --show-current)" != "$origin" ]; then
+            printf 'Returning to branch %s...\n' "$origin"
+            git switch "$origin" >/dev/null 2>&1
+        fi
+    fi
+
+    [ -f "$STATE_DIR/stash" ] && git stash pop --quiet
+    [ -d "$STATE_DIR" ] && rm -rf "$STATE_DIR"
+}
+
+get_strategy_options() {
+    [ -f "$STATE_DIR/theirs" ] && printf -- '-X theirs'
+}
+
+# Automatically marks target for 'edit' and patch for 'drop'.
+# If --copy is set, the patch is unchanged.
+export_sequence_editor() {
+    target=$(<"$STATE_DIR/TARGET")
+    patch=$(<"$STATE_DIR/PATCH")
+    copy_mode="false"
+    [ -f "$STATE_DIR/copy" ] && copy_mode="true"
+
+    # Temporary script to handle the sequence editing
+    cat << EOF > "$STATE_DIR/editor.sh"
+#!/usr/bin/env bash
+awk -v t="$target" -v p="$patch" -v c="$copy_mode" '
+    \$1 ~ /^(pick|p)\$/ {
+        if (length(\$2) >= 7) {
+            if (index(t, \$2) == 1) \$1 = "edit"
+            if (c == "false" && index(p, \$2) == 1) { next }
+        }
+    }
+    { print }
+' "\$1" > "\$1.tmp" && mv "\$1.tmp" "\$1"
+EOF
+    chmod +x "$STATE_DIR/editor.sh"
+    export GIT_SEQUENCE_EDITOR="$STATE_DIR/editor.sh"
+}
+
+start_injection() {
+    target=$(<"$STATE_DIR/TARGET")
+    target_branch=$(<"$STATE_DIR/TARGET_BRANCH")
+
+    export_sequence_editor
+
+    printf 'Starting optimized rebase from target parent...\n'
+
+    # If the user tries to inject changes into the very first commit of the
+    # repository, $target^ will fail to resolve because it has no parent.
+    if git rev-parse --verify "$target^" >/dev/null 2>&1; then
+        rebase_start="$target^"
+    else
+        rebase_start="--root"
+    fi
+    if ! git rebase -i "$rebase_start" "$target_branch" 2>/dev/null; then
+        printf '\nCONFLICT during rebase initialization!\nResolve, then run: git inject --continue\n'
+        exit 1
+    fi
+
+    process_rebase_step
+}
+
+process_rebase_step() {
+    patch=$(<"$STATE_DIR/PATCH")
+    target=$(<"$STATE_DIR/TARGET")
+
+    # Check if we stopped at our target for editing
+    current_head=$(git rev-parse HEAD)
+    if [ "$(git rev-parse "$target")" = "$current_head" ]; then
+        printf 'Injecting patch changes into target...\n'
+        if git cherry-pick --no-commit "$patch"; then
+            git commit --amend --reuse-message="$target" --no-verify
+            export_sequence_editor
+            if git rebase --continue; then
+                inject_cleanup
+                printf "Successfully injected patch.\n"
+            else
+                printf '\nCONFLICT during post-injection rebase!\nResolve, then run: git inject --continue\n'
+                exit 1
+            fi
+        else
+            printf '\nCONFLICT during patch injection!\nResolve, then run: git inject --continue\n'
+            exit 1
+        fi
+    else
+        # Stopped somewhere else (possible generic conflict)
+        export_sequence_editor
+        if git rebase --continue; then
+            inject_cleanup
+            printf "Successfully injected patch.\n"
+        else
+            printf '\nCONFLICT during rebase!\nResolve, then run: git inject --continue\n'
+            exit 1
+        fi
+    fi
+}
+
+case "$1" in
+    --continue)
+        if [ ! -d "$STATE_DIR" ]; then
+            printf 'Error: No injection in progress.\n'
+            exit 1
+        fi
+
+        origin=$(<"$STATE_DIR/ORIG_HEAD")
+        patch=$(<"$STATE_DIR/PATCH")
+        target=$(<"$STATE_DIR/TARGET")
+        target_branch=$(<"$STATE_DIR/TARGET_BRANCH")
+
+        if git rev-parse --verify CHERRY_PICK_HEAD >/dev/null 2>&1; then
+            git cherry-pick --quit
+            # GIT_EDITOR=true git cherry-pick --continue || exit 1
+            git commit --amend --reuse-message="$target" --no-verify
+            export_sequence_editor
+            git rebase --continue || exit 1
+            inject_cleanup
+            printf "Successfully injected patch '%s'.\n" "$patch"
+            exit 0
+        fi
+
+        # Normal rebase continue
+        export_sequence_editor
+        if git rebase --continue; then
+            inject_cleanup
+            printf "Successfully injected patch.\n"
+        fi
+        exit 0
+        ;;
+    --abort)
+        if [ -d "$STATE_DIR" ]; then
+            origin=$(<"$STATE_DIR/ORIG_BRANCH")
+            target_branch=$(<"$STATE_DIR/TARGET_BRANCH")
+            b_head=$(<"$BACKUP_HEAD")
+            git rebase --abort >/dev/null 2>&1
+            git cherry-pick --abort >/dev/null 2>&1
+            # Reset history on target branch
+            git switch "$target_branch" >/dev/null 2>&1
+            [ -n "$b_head" ] && git reset --hard "$b_head" >/dev/null 2>&1
+            printf 'Injection aborted. Returned %s to original state on %s.\n' "$target_branch" "$b_head"
+            # Switch back to invocation branch and cleanup
+            git switch "$origin" >/dev/null 2>&1
+            inject_cleanup "abort"
+        else
+            printf 'No active injection to abort.\n'
+        fi
+        exit 0
+        ;;
+    --revert)
+        if [ ! -f "$REVERT_HEAD" ] && [ ! -f "$REVERT_BRANCH" ]; then
+            printf 'Error: No revert information found.\n'
+            exit 1
+        fi
+        [ -f "$REVERT_HEAD" ] || { printf 'Error: Missing revert HEAD.\n'; exit 1; }
+        [ -f "$REVERT_BRANCH" ] || { printf 'Error: Missing revert branch.\n'; exit 1; }
+
+        r_head=$(<"$REVERT_HEAD")
+        r_branch=$(<"$REVERT_BRANCH")
+        current_head=$(git branch --show-current)
+        printf 'Reverting %s to state before last injection (%s)...\n' "$r_branch" "$r_head"
+        inject_autostash
+        git switch "$r_branch" >/dev/null 2>&1
+        git reset --hard "$r_head"
+        git switch "$current_head" >/dev/null 2>&1
+        rm -f "$REVERT_HEAD"
+        rm -f "$REVERT_BRANCH"
+        inject_cleanup
+        exit 0
+        ;;
+     --clear)
+        if [ ! -f "$REVERT_HEAD" ] && [ ! -f "$REVERT_BRANCH" ] && [ ! -d "$STATE_DIR" ]; then
+            printf 'Error: No working files found.\n'
+            exit 1
+        fi
+        [ -d "$STATE_DIR" ] && rm -rf "$STATE_DIR"
+        [ -f "$REVERT_HEAD" ] && rm -f "$REVERT_HEAD"
+        [ -f "$REVERT_BRANCH" ] && rm -f "$REVERT_BRANCH"
+        printf "Working files removed.\nStart an injection with 'git inject <target> <patch>'\n"
+        exit 0
+        ;;
+esac
+
+# Init
+patch=""
+target=""
+target_branch=""
+use_copy=false
+
+if [[ "$1" == "--into" ]]; then
+    target="$2"
+    patch="HEAD"
+    shift 2
+fi
+
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --copy | -c)
+            use_copy=true
+            shift
+            ;;
+        --into)
+            printf "Error: '--into' must be the first argument.\n"
+            exit 1
+            ;;
+        --clear)
+            printf "Error: Invalid use of '--clear'.\n"
+            exit 1
+            ;;
+        -*)
+            printf 'Error: Unknown option %s\n' "$1"
+            exit 1
+            ;;
+        *)
+            if [ -z "$target" ]; then
+                target="$1"
+            elif [ -z "$patch" ]; then
+                patch="$1"
+            else
+                printf 'Error: Unexpected argument %s\n' "$1"
+                exit 1
+            fi
+            shift
+            ;;
+    esac
+done
+
+# If only target is specified, patch defaults to HEAD
+if [ -n "$target" ] && [ -z "$patch" ]; then
+    patch="HEAD"
+fi
+
+if [ -z "$target" ] || [ -z "$patch" ]; then
+    printf 'Usage: git inject <target> [<patch>] [--copy] [--branch <name>]\n'
+    printf '       git inject (--continue | --abort | --revert | --clear)\n'
+    inject_cleanup
+    exit 1
+fi
+
+# Setup State
+mkdir -p "$STATE_DIR"
+# HEAD where git-inject was invoked
+git rev-parse HEAD > "$STATE_DIR/ORIG_HEAD"
+git branch --show-current > "$STATE_DIR/ORIG_BRANCH"
+origin=$(<"$STATE_DIR/ORIG_BRANCH")
+# Effective target branch for injection
+touch "$STATE_DIR/TARGET_BRANCH"
+echo "$origin" > "$STATE_DIR/TARGET_BRANCH"
+target_branch=$(<"$STATE_DIR/TARGET_BRANCH")
+if [ -z "$target_branch" ]; then
+    printf 'Error: You are in a detached HEAD state.\nStart git inject within a branch.\n'
+    exit 1
+fi
+
+# Hash of the effective target branch name and HEAD to which we reset
+# upon reverting the injection
+git rev-parse HEAD > "$REVERT_HEAD"
+echo "$target_branch" > "$REVERT_BRANCH"
+
+# Hash of the <target> commit
+if target=$(git rev-parse --verify "$target" 2>/dev/null); then
+    echo "$target" > "$STATE_DIR/TARGET"
+else
+    printf 'Error: Invalid target %s.\n' "$target"; exit 1
+fi
+
+# Hash of the <patch> commit
+if patch=$(git rev-parse --verify "$patch" 2>/dev/null); then
+    echo "$patch" > "$STATE_DIR/PATCH"
+else
+    printf 'Error: Invalid patch %s.\n' "$patch"; exit 1
+fi
+
+if ! git merge-base --is-ancestor "$target" "$target_branch" >/dev/null 2>&1; then
+    printf 'Error: The target commit must exist on the branch "%s".\n' "$target_branch"
+    exit 1
+fi
+
+if ! git merge-base --is-ancestor "$target" "$patch" >/dev/null 2>&1; then
+    printf 'Error: The target commit must be an ancestor of the patch commit.\nSpecify --branch if injecting to a different branch.\n'
+    exit 1
+fi
+
+if ! git merge-base --is-ancestor "$patch" "$target_branch" >/dev/null 2>&1; then
+    printf 'Error: The patch must exist on the branch history of %s.\nSpecify --branch if injecting to a different branch.\n' "$target_branch"
+    exit 1
+fi
+
+[ "$use_copy" = true ] && touch "$STATE_DIR/copy"
+
+inject_autostash
+
+if [ "$target_branch" != "$origin" ]; then
+    printf 'Switching to branch %s...\n' "$target_branch"
+    git switch "$target_branch" || exit 1
+fi
+
+# Hash copy of the current HEAD on target branch.
+git rev-parse HEAD > "$BACKUP_HEAD"
+
+start_injection
