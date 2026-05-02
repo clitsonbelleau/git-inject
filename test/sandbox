@@ -1,0 +1,77 @@
+#!/usr/bin/env bash
+
+setup_env() {
+    echo "Creating a fresh test directory..."
+    mkdir -p "git-inject-sandbox"
+    cd "git-inject-sandbox" || exit
+
+    if [ ! -d .git ]; then
+        git init
+    fi
+
+    make_commits() {
+        local prefix=$1
+        local count=$2
+        local exts=("txt" "md" "json" "csv" "yml" "xml" "html" "css" "js" "py")
+
+        echo "Creating test commits for branch $prefix..."
+
+        for i in $(seq 1 $count); do
+            local ext=${exts[$((i-1))]}
+            local filename="${prefix}_${i}.${ext}"
+
+            echo "Data for $prefix commit $i" > "$filename"
+            git add "$filename" >/dev/null 2>&1
+            git commit -m "$prefix: commit $i (adds $filename)" --quiet
+        done
+    }
+
+    git switch --orphan master >/dev/null 2>&1
+    git rm -rf . >/dev/null 2>&1
+    make_commits "master" 10
+
+    git switch -c topic master~6 >/dev/null 2>&1
+    make_commits "topic" 5
+
+    git switch master >/dev/null 2>&1
+    git switch -c feature master~3 >/dev/null 2>&1
+    make_commits "feature" 5
+
+    git switch --orphan docs >/dev/null 2>&1
+    git rm -rf . >/dev/null 2>&1
+    make_commits "docs" 10
+
+    git switch -c article docs~6 >/dev/null 2>&1
+    make_commits "article" 5
+
+    git switch docs >/dev/null 2>&1
+    git switch -c reference docs~3 >/dev/null 2>&1
+    make_commits "reference" 5
+
+    echo ""
+    echo "Test environment created: ./git-inject-test/"
+    echo ""
+    git log --graph --all --oneline --decorate
+}
+
+teardown_env() {
+    [ -d "git-inject-sandbox" ] && rm -rf "git-inject-sandbox"
+}
+
+case "$1" in
+    setup)
+        teardown_env
+        setup_env
+        ;;
+    teardown|clean)
+        teardown_env
+        ;;
+    *)
+        echo "Usage: $0 {setup|teardown}"
+        echo ""
+        echo "  setup        Creates the 'git-inject-test' environemnt and generates"
+        echo "               the branches/commits."
+        echo "  teardown     Deletes the test environment."
+        exit 1
+        ;;
+esac
