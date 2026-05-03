@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # git-inject: Merge a newer commit into an older commit
-# Usage: git inject <target> [<patch>] [--copy]
+# Usage: git inject <target> [<patch>] [--copy] [--branch <name>]
 #        git inject (--continue | --abort | --revert | --clear)
 
 # Author:  Clitson Belleau <dev@clitson.nl>
@@ -69,6 +69,7 @@ EOF
 }
 
 start_injection() {
+    options=$(get_strategy_options)
     target=$(<"$STATE_DIR/TARGET")
     target_branch=$(<"$STATE_DIR/TARGET_BRANCH")
 
@@ -83,7 +84,7 @@ start_injection() {
     else
         rebase_start="--root"
     fi
-    if ! git rebase -i "$rebase_start" "$target_branch" 2>/dev/null; then
+    if ! git rebase -i $options "$rebase_start" "$target_branch" 2>/dev/null; then
         printf '\nCONFLICT during rebase initialization!\nResolve, then run: git inject --continue\n'
         exit 1
     fi
@@ -94,12 +95,13 @@ start_injection() {
 process_rebase_step() {
     patch=$(<"$STATE_DIR/PATCH")
     target=$(<"$STATE_DIR/TARGET")
+    options=$(get_strategy_options)
 
     # Check if we stopped at our target for editing
     current_head=$(git rev-parse HEAD)
     if [ "$(git rev-parse "$target")" = "$current_head" ]; then
         printf 'Injecting patch changes into target...\n'
-        if git cherry-pick --no-commit "$patch"; then
+        if git cherry-pick $options --no-commit "$patch"; then
             git commit --amend --reuse-message="$target" --no-verify
             export_sequence_editor
             if git rebase --continue; then
@@ -137,6 +139,7 @@ case "$1" in
         patch=$(<"$STATE_DIR/PATCH")
         target=$(<"$STATE_DIR/TARGET")
         target_branch=$(<"$STATE_DIR/TARGET_BRANCH")
+        options=$(get_strategy_options)
 
         if git rev-parse --verify CHERRY_PICK_HEAD >/dev/null 2>&1; then
             git cherry-pick --quit
@@ -214,7 +217,9 @@ esac
 patch=""
 target=""
 target_branch=""
+use_branch=false
 use_copy=false
+use_theirs=false
 
 if [[ "$1" == "--into" ]]; then
     target="$2"
@@ -224,9 +229,18 @@ fi
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
+        --theirs)
+            use_theirs=true
+            shift
+            ;;
         --copy | -c)
             use_copy=true
             shift
+            ;;
+        --branch)
+            target_branch="$2"
+            use_branch=true
+            shift 2
             ;;
         --into)
             printf "Error: '--into' must be the first argument.\n"
@@ -274,11 +288,21 @@ git branch --show-current > "$STATE_DIR/ORIG_BRANCH"
 origin=$(<"$STATE_DIR/ORIG_BRANCH")
 # Effective target branch for injection
 touch "$STATE_DIR/TARGET_BRANCH"
-echo "$origin" > "$STATE_DIR/TARGET_BRANCH"
-target_branch=$(<"$STATE_DIR/TARGET_BRANCH")
-if [ -z "$target_branch" ]; then
-    printf 'Error: You are in a detached HEAD state.\nStart git inject within a branch.\n'
-    exit 1
+
+# Determine target branch
+if [ -n "$target_branch" ]; then
+    if ! git show-ref --verify --quiet "refs/heads/$target_branch"; then
+        printf 'Error: Branch "%s" does not exist.\n' "$target_branch"
+        exit 1
+    fi
+    echo "$target_branch" > "$STATE_DIR/TARGET_BRANCH"
+else
+    echo "$origin" > "$STATE_DIR/TARGET_BRANCH"
+    target_branch=$(<"$STATE_DIR/TARGET_BRANCH")
+    if [ -z "$target_branch" ]; then
+        printf 'Error: You are in a detached HEAD state.\nStart git inject within a branch.\n'
+        exit 1
+    fi
 fi
 
 # Hash of the effective target branch name and HEAD to which we reset
@@ -305,16 +329,19 @@ if ! git merge-base --is-ancestor "$target" "$target_branch" >/dev/null 2>&1; th
     exit 1
 fi
 
-if ! git merge-base --is-ancestor "$target" "$patch" >/dev/null 2>&1; then
-    printf 'Error: The target commit must be an ancestor of the patch commit.\nSpecify --branch if injecting to a different branch.\n'
-    exit 1
+if [ "$use_branch" = false ]; then
+    if ! git merge-base --is-ancestor "$target" "$patch" >/dev/null 2>&1; then
+        printf 'Error: The target commit must be an ancestor of the patch commit.\nSpecify --branch if injecting to a different branch.\n'
+        exit 1
+    fi
+
+    if ! git merge-base --is-ancestor "$patch" "$target_branch" >/dev/null 2>&1; then
+        printf 'Error: The patch must exist on the branch history of %s.\nSpecify --branch if injecting to a different branch.\n' "$target_branch"
+        exit 1
+    fi
 fi
 
-if ! git merge-base --is-ancestor "$patch" "$target_branch" >/dev/null 2>&1; then
-    printf 'Error: The patch must exist on the branch history of %s.\nSpecify --branch if injecting to a different branch.\n' "$target_branch"
-    exit 1
-fi
-
+[ "$use_theirs" = true ] && touch "$STATE_DIR/theirs"
 [ "$use_copy" = true ] && touch "$STATE_DIR/copy"
 
 inject_autostash
