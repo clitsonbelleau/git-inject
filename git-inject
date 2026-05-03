@@ -2,6 +2,7 @@
 
 # git-inject: Merge a newer commit into an older commit
 # Usage: git inject <target> [<patch>] [--copy] [--branch <name>]
+#        git inject [-w | --working-tree] <target> [--branch <name>]
 #        git inject (--continue | --abort | --revert | --clear)
 
 # Author:  Clitson Belleau <dev@clitson.nl>
@@ -32,6 +33,20 @@ inject_cleanup() {
         if [ -n "$origin" ] && [ "$(git branch --show-current)" != "$origin" ]; then
             printf 'Returning to branch %s...\n' "$origin"
             git switch "$origin" >/dev/null 2>&1
+        fi
+    fi
+
+    # Handle the temporary commit
+    if [ -f "$STATE_DIR/USE_WORKTREE" ]; then
+        patch=$(<"$STATE_DIR/PATCH")
+        if [ "$(git rev-parse HEAD)" = "$patch" ]; then
+            if [ "$1" = "abort" ]; then
+                # Recover changes after abort
+                git reset HEAD^ >/dev/null 2>&1
+            else
+                # Drop temporary commit upon success
+                git reset --hard HEAD^ >/dev/null 2>&1
+            fi
         fi
     fi
 
@@ -217,6 +232,7 @@ esac
 patch=""
 target=""
 target_branch=""
+use_working_tree=false
 use_branch=false
 use_copy=false
 use_theirs=false
@@ -229,6 +245,10 @@ fi
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
+        -w | --working-tree)
+            use_working_tree=true
+            shift
+            ;;
         --theirs)
             use_theirs=true
             shift
@@ -268,16 +288,34 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
+if [ "$use_working_tree" = true ]; then
+    if [ "$use_copy" = true ]; then
+        printf -- 'Error: --working-tree and --copy cannot be used together.\n'
+        exit 1
+    fi
+    if [ -n "$patch" ]; then
+        printf -- '--working-tree enabled. Patch will be reset to head to HEAD.\n'
+        printf 'Verify arguments and run the command again.\n'
+        exit 1
+    fi
+fi
+
 # If only target is specified, patch defaults to HEAD
 if [ -n "$target" ] && [ -z "$patch" ]; then
     patch="HEAD"
 fi
 
-if [ -z "$target" ] || [ -z "$patch" ]; then
-    printf 'Usage: git inject <target> [<patch>] [--copy] [--branch <name>]\n'
-    printf '       git inject (--continue | --abort | --revert | --clear)\n'
-    inject_cleanup
-    exit 1
+if [ -z "$target" ] && [ -z "$patch" ]; then
+    if [ "$use_working_tree" = true ]; then
+        target="HEAD"
+        patch="HEAD"
+    else
+        printf 'Usage: git inject <target> [<patch>] [--copy] [--branch <name>]\n'
+        printf '       git inject [-w | --working-tree] <target> [--branch <name>]\n'
+        printf '       git inject (--continue | --abort | --revert | --clear)\n'
+        inject_cleanup
+        exit 1
+    fi
 fi
 
 # Setup State
@@ -317,6 +355,32 @@ else
     printf 'Error: Invalid target %s.\n' "$target"; exit 1
 fi
 
+if [ "$use_working_tree" = true ]; then
+    if git diff-index --quiet HEAD --; then
+        printf 'Error: No working directory changes to inject.\n'
+        exit 1
+    fi
+
+    printf 'Committing working files for injection...\n'
+    git add .
+
+    if [ $(git rev-parse HEAD) = "$target" ]; then
+        if git commit --amend --no-edit; then
+            printf "Successfully injected patch.\n"
+            inject_cleanup
+            exit 0
+        else
+            printf "Error: Something unexpected happened.\n"
+            exit 1
+        fi
+    else
+        git commit -m "INJECT: Commit all changes for injection into $(git rev-parse --short "$target")" --quiet
+    fi
+
+    patch="HEAD"
+    git rev-parse HEAD > "$STATE_DIR/USE_WORKTREE"
+fi
+
 # Hash of the <patch> commit
 if patch=$(git rev-parse --verify "$patch" 2>/dev/null); then
     echo "$patch" > "$STATE_DIR/PATCH"
@@ -344,7 +408,7 @@ fi
 [ "$use_theirs" = true ] && touch "$STATE_DIR/theirs"
 [ "$use_copy" = true ] && touch "$STATE_DIR/copy"
 
-inject_autostash
+if [ "$use_working_tree" = false ]; then inject_autostash; fi
 
 if [ "$target_branch" != "$origin" ]; then
     printf 'Switching to branch %s...\n' "$target_branch"
