@@ -1,0 +1,168 @@
+GIT-INJECT(1)                     Git Manual                      GIT-INJECT(1)
+
+NAME
+       git-inject - Merge a newer commit into an older commit
+
+SYNOPSIS
+       git inject <target> [<patch>] [--copy] [--branch <branch>]
+       git inject [-w | --working-tree] <target> [--branch <branch>]
+       git inject (--continue | --abort | --revert | --clear)
+
+INSTALLATION
+       Clone the repository and then run the installation script for your
+       operating system.
+
+       Windows:
+
+           powershell.exe -ExecutionPolicy Bypass -File .\install.ps1
+
+       Linux/macOS:
+
+           chmod +x install.sh
+           ./install.sh
+
+MODE OPTIONS
+       --continue
+              Resume the injection process after resolving merge conflicts.
+              Use this instead of native git continue commands.
+
+       --abort
+              Abort the inject operation and reset HEAD to the original
+              branch and restores any stashed changes. Use this instead of
+              native git abort commands.
+
+       --revert
+              Reset HEAD to the original branch and exact state prior to the
+              last successful or failed injection. This process can only be
+              done once and for the most recent injection.
+
+              This action will not recover uncommitted changes before the
+              injection when using git inject --working-tree.
+
+       --clear
+              Clean up the git-inject working files (see FILES below).
+
+              If an injection is manually aborted using native git commands
+              (e.g., git rebase --abort) outside of git-inject, this may
+              leave behind state tracking files.
+
+OPTIONS
+       <target>
+              The older commit that receives the changes. This commit must
+              be a direct ancestor of the <patch> commit.
+
+       <patch>
+              The newer commit containing the changes to merge. This
+              commit is removed from the branch history during injection.
+
+       -w
+       --working-tree
+              Inject all changes in the working tree into the specified
+              target. These are uncommitted changes and will not return to
+              the staging area when git inject --revert is used.
+
+              See also INCOMPATIBLE OPTIONS below.
+
+       --into <target>
+              Syntactic sugar. Inject the current HEAD commit into the
+              specified target. Does not alter script operation.
+
+       --copy
+              Copy diff changes from one commit to another. Commits copied
+              are not deleted.
+
+              See also INCOMPATIBLE OPTIONS and BUGS below.
+
+       --branch <branch>
+              Perform the injection on the specified branch instead of the
+              current one.
+
+              See also BUGS below.
+
+       --theirs
+              Resolve merge conflicts by favoring the changes from the
+              newer patch commit. This applies to internal rebase and
+              cherry-pick operations.
+
+              If you expect conflicts and want the newer patch commit's
+              changes to automatically overwrite the older target's changes,
+              you can pass the --theirs flag. This applies the '-X theirs'
+              merge strategy and bypasses manual conflict resolution for
+              those files.
+
+INCOMPATIBLE OPTIONS
+       The following pairs of options are incompatible:
+
+       --working-tree and --copy
+       --working-tree and <patch>
+
+EXAMPLES
+       Merge the current HEAD into an older commit:
+
+              git inject f1a2b3
+              git inject --into f1a2b3
+              git inject HEAD~3
+
+       Merge a specific commit into an older commit:
+
+              git inject abc1234 def5678
+              git inject HEAD~7 HEAD^
+
+       Inject a patch into a different branch:
+
+              git inject --branch develop f1a2b3 h7i8j9
+
+       Merge a missing file and automatically resolve conflicts in favor
+       of the patch:
+
+              git inject f1a2b3 h7i8j9 --theirs
+
+       Inject all changes in the working tree into an older commit:
+
+              git inject -w
+              git inject -w f1a2b3
+
+BUGS
+       If --branch is specified and the patch commit is older than the target
+       commit, the injection will proceed without error.
+
+       When reverting an injection which used --copy, git-inject does not
+       remember where the commit was copied from which results in a broken
+       tree.
+
+SANDBOX
+       To create a temporary sandbox to test the command, download the
+       repository then run
+
+           chmod +x ./test/sandbox
+           ./test/sandbox setup
+
+       and navigate to the generated 'git-inject-sandbox/' folder and open
+       the git project.
+
+       The sandbox is crated with six branches, two of which are orphan
+       branches and the other four are split between the orphans, two each.
+       The included files are designed to be distinguishable from each other
+       by file extension.
+
+       Here's what the branch tree structure would look like:
+
+           * 82f1807 (feature)           * 6cf071b (reference)
+           | * 6c0b3b1 (topic)           | * 41d729a (article)
+           | | * b4afe1c (master)        | | * 6316505 (docs)
+           | |/                          | |/
+           |/|                           |/|
+           * | d08a371                   * | 02a7b8f
+           |/                            |/
+           * 34252d6                     * b6d343a
+
+       The tree is truncated to cut down unnecessary empty space.
+
+AUTHOR
+       Written by Clitson Belleau <dev@clitson.nl>.
+
+GIT
+       Not part of the git(1) suite. This is a third-party tool.
+
+
+GIT-INJECT(1)                     05/03/2026                      GIT-INJECT(1)

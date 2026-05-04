@@ -1,0 +1,3 @@
+asciidoctor git-inject.adoc
+asciidoctor -b manpage git-inject.adoc
+asciidoctor-pdf git-inject.adoc
