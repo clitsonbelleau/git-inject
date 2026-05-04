@@ -19,6 +19,16 @@ REVERT_HEAD="$GIT_DIR/INJECT_REVERT"
 REVERT_BRANCH="$GIT_DIR/INJECT_BRANCH"
 BACKUP_HEAD="$STATE_DIR/BACKUP_HEAD"
 
+usage() {
+    cat << EOF
+Usage: git inject <target> [<patch>] [--copy] [-b | --branch <branch>]
+       git inject [-w | --working-tree] <target> [-b | --branch <branch>]
+       git inject (--continue | --abort | --revert | --clear)
+
+       Run 'git help inject' to view the manual.
+EOF
+}
+
 inject_autostash(){
     old_stash=$(git rev-parse --quiet --verify refs/stash)
     git stash --include-untracked --message="INJECT: Save working tree" >/dev/null 2>&1
@@ -310,9 +320,7 @@ if [ -z "$target" ] && [ -z "$patch" ]; then
         target="HEAD"
         patch="HEAD"
     else
-        printf 'Usage: git inject <target> [<patch>] [--copy] [-b | --branch <branch>]\n'
-        printf '       git inject [-w | --working-tree] <target> [-b | --branch <branch>]\n'
-        printf '       git inject (--continue | --abort | --revert | --clear)\n'
+        usage
         inject_cleanup
         exit 1
     fi
