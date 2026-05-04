@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 
 # git-inject: Merge a newer commit into an older commit
-# Usage: git inject <target> [<patch>] [--copy] [--branch <name>]
-#        git inject [-w | --working-tree] <target> [--branch <name>]
+# Usage: git inject <target> [<patch>] [--copy] [-b | --branch <branch>]
+#        git inject [-w | --working-tree] <target> [-b | --branch <branch>]
 #        git inject (--continue | --abort | --revert | --clear)
 
 # Author:  Clitson Belleau <dev@clitson.nl>
@@ -257,7 +257,7 @@ while [[ $# -gt 0 ]]; do
             use_copy=true
             shift
             ;;
-        --branch)
+        -b | --branch)
             target_branch="$2"
             use_branch=true
             shift 2
@@ -310,8 +310,8 @@ if [ -z "$target" ] && [ -z "$patch" ]; then
         target="HEAD"
         patch="HEAD"
     else
-        printf 'Usage: git inject <target> [<patch>] [--copy] [--branch <name>]\n'
-        printf '       git inject [-w | --working-tree] <target> [--branch <name>]\n'
+        printf 'Usage: git inject <target> [<patch>] [--copy] [-b | --branch <branch>]\n'
+        printf '       git inject [-w | --working-tree] <target> [-b | --branch <branch>]\n'
         printf '       git inject (--continue | --abort | --revert | --clear)\n'
         inject_cleanup
         exit 1
