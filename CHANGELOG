@@ -1,0 +1,58 @@
+2026-05-05  Clitson Belleau  <dev@clitson.nl>
+
+        doc: create plaintext manual
+
+2026-05-04  Clitson Belleau  <dev@clitson.nl>
+
+        feat: expand usage dialog as a function
+
+2026-05-04  Clitson Belleau  <dev@clitson.nl>
+
+        feat: modify branch specifier flag
+        Create short switch `-b` and change label from `<name>` to `<branch>`.
+
+2026-05-03  Clitson Belleau  <dev@clitson.nl>
+
+        feat: inject changes from working tree
+        New flag `-w` or `--working-tree` to use uncommited changes in the
+        current working tree and inject them into a specified target.
+
+2026-05-03  Clitson Belleau  <dev@clitson.nl>
+
+        feat: inject into a target on a different branch
+        New flag `--branch <name>` to specify the branch where the target
+        commit is located for the injection. Cross-branch injection is not
+        allowed by default.
+
+2026-05-03  Clitson Belleau  <dev@clitson.nl>
+
+        test: sandbox testing environment
+        Create an isolated sandbox environment to test and varify git-inject
+        working capabilities.
+
+2026-05-02  Clitson Belleau  <dev@clitson.nl>
+
+        chore: create .gitignore
+
+2026-04-30  Clitson Belleau  <dev@clitson.nl>
+
+        feat: create git-inject script
+        Basic functionality to inject a patch commit into a target commit
+        with safety and recovery modes.
+
+2026-04-30  Clitson Belleau  <dev@clitson.nl>
+
+        chore: add GPLv3 license
+
+2026-04-30  Clitson Belleau  <dev@clitson.nl>
+
+        Initial commit
+
+
+        -----
+
+        Copyright (C) 2026 Free Software Foundation, Inc.
+
+        Copying and distribution of this file, with or without
+        modification, are permitted provided the copyright notice
+        and this notice are preserved.
