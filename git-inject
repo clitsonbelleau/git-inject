@@ -55,7 +55,7 @@ inject_cleanup() {
     fi
 
     # Handle the temporary commit
-    if [ -f "$STATE_DIR/USE_WORKTREE" ]; then
+    if [ -n "$STATE_DIR/INDEX_HEAD" ]; then
         patch=$(<"$STATE_DIR/PATCH")
         if [ "$(git rev-parse HEAD)" = "$patch" ]; then
             if [ "$1" = "abort" ]; then
@@ -358,6 +358,7 @@ git branch --show-current > "$STATE_DIR/ORIG_BRANCH"
 origin=$(<"$STATE_DIR/ORIG_BRANCH")
 # Effective target branch for injection
 touch "$STATE_DIR/TARGET_BRANCH"
+touch "$STATE_DIR/INDEX_HEAD"
 
 # Determine target branch
 if [ -n "$target_branch" ]; then
@@ -418,7 +419,7 @@ if [ "$use_working_tree" = true ] || [ "$use_staged" = true ]; then
     fi
 
     patch="HEAD"
-    git rev-parse HEAD > "$STATE_DIR/USE_WORKTREE"
+    git rev-parse HEAD > "$STATE_DIR/INDEX_HEAD"
 fi
 
 # Hash of the <patch> commit
