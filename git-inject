@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 
 # git-inject: Merge a newer commit into an older commit
-# Usage: git inject <target> [<patch>] [--copy] [-b | --branch <branch>]
-#        git inject [-w | --working-tree] <target> [-b | --branch <branch>]
+# Usage: git inject <target> [<patch>] [--copy] [--branch <branch>]
+#        git inject [--working-tree | --staged] <target> [--branch <branch>]
 #        git inject (--continue | --abort | --revert | --clear)
 
 # Author:  Clitson Belleau <dev@clitson.nl>
@@ -21,8 +21,8 @@ BACKUP_HEAD="$STATE_DIR/BACKUP_HEAD"
 
 usage() {
     cat << EOF
-Usage: git inject <target> [<patch>] [--copy] [-b | --branch <branch>]
-       git inject [-w | --working-tree] <target> [-b | --branch <branch>]
+Usage: git inject <target> [<patch>] [--copy] [--branch <branch>]
+       git inject [--working-tree | --staged] <target> [--branch <branch>]
        git inject (--continue | --abort | --revert | --clear)
 
        Run 'git help inject' to view the manual.
@@ -246,6 +246,7 @@ use_working_tree=false
 use_branch=false
 use_copy=false
 use_theirs=false
+use_staged=false
 
 if [[ "$1" == "--into" ]]; then
     target="$2"
@@ -280,6 +281,10 @@ while [[ $# -gt 0 ]]; do
             printf "Error: Invalid use of '--clear'.\n"
             exit 1
             ;;
+        --staged)
+            use_staged=true
+            shift
+            ;;
         -*)
             printf 'Error: Unknown option %s\n' "$1"
             exit 1
@@ -310,13 +315,19 @@ if [ "$use_working_tree" = true ]; then
     fi
 fi
 
+if [ "$use_staged" = true ]; then
+    if [ "$use_copy" = true ]; then
+        printf "Error: Cannot copy from index. Please commit your changes before copying."
+    fi
+fi
+
 # If only target is specified, patch defaults to HEAD
 if [ -n "$target" ] && [ -z "$patch" ]; then
     patch="HEAD"
 fi
 
 if [ -z "$target" ] && [ -z "$patch" ]; then
-    if [ "$use_working_tree" = true ]; then
+    if [ "$use_working_tree" = true ] || [ "$use_staged" = true ]; then
         target="HEAD"
         patch="HEAD"
     else
@@ -363,14 +374,16 @@ else
     printf 'Error: Invalid target %s.\n' "$target"; exit 1
 fi
 
-if [ "$use_working_tree" = true ]; then
+if [ "$use_working_tree" = true ] || [ "$use_staged" = true ]; then
     if git diff-index --quiet HEAD --; then
         printf 'Error: No working directory changes to inject.\n'
         exit 1
     fi
 
-    printf 'Committing working files for injection...\n'
-    git add .
+    if [ "$use_working_tree" = true ]; then
+        printf 'Committing working files for injection...\n'
+        git add .
+    fi
 
     if [ $(git rev-parse HEAD) = "$target" ]; then
         if git commit --amend --no-edit; then
@@ -416,7 +429,9 @@ fi
 [ "$use_theirs" = true ] && touch "$STATE_DIR/theirs"
 [ "$use_copy" = true ] && touch "$STATE_DIR/copy"
 
-if [ "$use_working_tree" = false ]; then inject_autostash; fi
+if [ "$use_working_tree" = false ] && [ "$use_staged" = false ]; then
+    inject_autostash
+fi
 
 if [ "$target_branch" != "$origin" ]; then
     printf 'Switching to branch %s...\n' "$target_branch"
