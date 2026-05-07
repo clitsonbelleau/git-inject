@@ -45,6 +45,10 @@ inject_autostash(){
 }
 
 inject_cleanup() {
+    # Load persisted flags
+    [ -f "$STATE_DIR/use_working_tree" ] && use_working_tree=true
+    [ -f "$STATE_DIR/use_staged" ] && use_staged=true
+
     # Return to the invocation branch before popping stash
     if [ -f "$STATE_DIR/ORIG_BRANCH" ]; then
         origin=$(<"$STATE_DIR/ORIG_BRANCH")
@@ -168,6 +172,7 @@ case "$1" in
             exit 1
         fi
 
+        [ -f "$STATE_DIR/is_empty_commit" ] && is_empty_commit=true
         origin=$(<"$STATE_DIR/ORIG_HEAD")
         patch=$(<"$STATE_DIR/PATCH")
         target=$(<"$STATE_DIR/TARGET")
@@ -448,6 +453,9 @@ fi
 
 [ "$use_theirs" = true ] && touch "$STATE_DIR/theirs"
 [ "$use_copy" = true ] && touch "$STATE_DIR/copy"
+[ "$use_working_tree" = true ] && touch "$STATE_DIR/use_working_tree"
+[ "$use_staged" = true ] && touch "$STATE_DIR/use_staged"
+[ "$is_empty_commit" = true ] && touch "$STATE_DIR/is_empty_commit"
 
 if [ "$use_working_tree" = false ] && [ "$use_staged" = false ]; then
     inject_autostash
