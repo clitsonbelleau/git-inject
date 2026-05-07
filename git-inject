@@ -72,7 +72,13 @@ inject_cleanup() {
         fi
     fi
 
-    [ -f "$STATE_DIR/stash" ] && git stash pop --quiet
+    if [ -f "$STATE_DIR/stash" ]; then
+        if [ "$use_working_tree" = true ]; then
+            git stash drop --quiet
+        else
+            git stash pop --quiet
+        fi
+    fi
     [ -d "$STATE_DIR" ] && rm -rf "$STATE_DIR"
 }
 
@@ -405,9 +411,12 @@ if [ "$use_working_tree" = true ] || [ "$use_staged" = true ]; then
         if git diff-index --quiet HEAD --; then
             printf 'Error: No working directory changes to inject.\n'
             exit 1
+        else
+            inject_autostash
+            git stash apply
         fi
-        printf 'Committing working files for injection...\n'
         git add .
+        printf 'Committed working files for injection.\n'
     fi
 
     if [ $(git rev-parse HEAD) = "$target" ]; then
