@@ -55,7 +55,7 @@ inject_cleanup() {
     fi
 
     # Handle the temporary commit
-    if [ -n "$STATE_DIR/INDEX_HEAD" ]; then
+    if [ -s "$STATE_DIR/INDEX_HEAD" ]; then
         patch=$(<"$STATE_DIR/PATCH")
         if [ "$(git rev-parse HEAD)" = "$patch" ]; then
             if [ "$1" = "abort" ]; then
