@@ -318,7 +318,7 @@ done
 
 if [ "$use_working_tree" = true ]; then
     if [ "$use_copy" = true ]; then
-        printf -- 'Error: --working-tree and --copy cannot be used together.\n'
+        printf -- 'Error: Cannot copy from working tree.\n'
         exit 1
     fi
     if [ -n "$patch" ]; then
