@@ -30,10 +30,18 @@ EOF
 }
 
 inject_autostash(){
+    local old_stash
+    local new_stash
+
     old_stash=$(git rev-parse --quiet --verify refs/stash)
     git stash --include-untracked --message="INJECT: Save working tree" >/dev/null 2>&1
     new_stash=$(git rev-parse --quiet --verify refs/stash)
-    [ "$old_stash" != "$new_stash" ] && echo "$new_stash" > "$STATE_DIR/stash"
+
+    if [ "$old_stash" != "$new_stash" ]; then
+        echo "$new_stash" > "$STATE_DIR/stash"
+    else
+        rm -f "$STATE_DIR/stash"
+    fi
 }
 
 inject_cleanup() {
