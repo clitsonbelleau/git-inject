@@ -127,7 +127,7 @@ process_rebase_step() {
     if [ "$(git rev-parse "$target")" = "$current_head" ]; then
         printf 'Injecting patch changes into target...\n'
         if git cherry-pick $options --no-commit "$patch"; then
-            git commit --amend --reuse-message="$target" --no-verify
+            git commit --amend $([ "$is_empty_commit" = true ] && echo "--allow-empty") --reuse-message="$target" --no-verify
             export_sequence_editor
             if git rebase --continue; then
                 inject_cleanup
@@ -169,7 +169,7 @@ case "$1" in
         if git rev-parse --verify CHERRY_PICK_HEAD >/dev/null 2>&1; then
             git cherry-pick --quit
             # GIT_EDITOR=true git cherry-pick --continue || exit 1
-            git commit --amend --reuse-message="$target" --no-verify
+            git commit --amend $([ "$is_empty_commit" = true ] && echo "--allow-empty") --reuse-message="$target" --no-verify
             export_sequence_editor
             git rebase --continue || exit 1
             inject_cleanup
@@ -247,6 +247,7 @@ use_branch=false
 use_copy=false
 use_theirs=false
 use_staged=false
+is_empty_commit=false
 
 if [[ "$1" == "--into" ]]; then
     target="$2"
@@ -283,6 +284,10 @@ while [[ $# -gt 0 ]]; do
             ;;
         --staged)
             use_staged=true
+            shift
+            ;;
+        --is-empty)
+            is_empty_commit=true
             shift
             ;;
         -*)
@@ -386,7 +391,7 @@ if [ "$use_working_tree" = true ] || [ "$use_staged" = true ]; then
     fi
 
     if [ $(git rev-parse HEAD) = "$target" ]; then
-        if git commit --amend --no-edit; then
+        if git commit --amend $([ "$is_empty_commit" = true ] && echo "--allow-empty") --no-edit; then
             printf "Successfully injected patch.\n"
             inject_cleanup
             exit 0
