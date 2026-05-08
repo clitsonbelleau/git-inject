@@ -1,3 +1,7 @@
 *.pdf
 *.txt
+*.log
+*.sh
+*.bak
 git-inject-sandbox/
+test/REPORT.md
