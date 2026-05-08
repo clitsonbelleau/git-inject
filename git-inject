@@ -19,6 +19,27 @@ REVERT_HEAD="$GIT_DIR/INJECT_REVERT"
 REVERT_BRANCH="$GIT_DIR/INJECT_BRANCH"
 BACKUP_HEAD="$STATE_DIR/BACKUP_HEAD"
 
+# Ensure cleanup happens on unexpected exit
+# but only for states that are not meant to be resumed
+CLEANUP_ON_EXIT=true
+
+cleanup_trap() {
+    if [ "$CLEANUP_ON_EXIT" = "true" ]; then
+        if [ -d "$STATE_DIR" ]; then
+            # Abort any git operations that might be in progress if crashed/interrupted
+            if [ -d "$GIT_DIR/rebase-merge" ] || [ -d "$GIT_DIR/rebase-apply" ]; then
+                git rebase --abort >/dev/null 2>&1
+            fi
+            if [ -f "$GIT_DIR/CHERRY_PICK_HEAD" ]; then
+                git cherry-pick --abort >/dev/null 2>&1
+            fi
+            inject_cleanup
+        fi
+    fi
+}
+
+trap cleanup_trap EXIT
+
 usage() {
     cat << EOF
 Usage: git inject <target> [<patch>] [--copy] [--branch <branch>]
@@ -45,6 +66,7 @@ inject_autostash(){
 }
 
 inject_cleanup() {
+    CLEANUP_ON_EXIT=false
     # Load persisted flags
     [ -f "$STATE_DIR/use_working_tree" ] && use_working_tree=true
     [ -f "$STATE_DIR/use_staged" ] && use_staged=true
@@ -129,6 +151,7 @@ start_injection() {
     fi
     if ! git rebase -i $options "$rebase_start" "$target_branch" 2>/dev/null; then
         printf '\nCONFLICT during rebase initialization!\nResolve, then run: git inject --continue\n'
+        CLEANUP_ON_EXIT=false
         exit 1
     fi
 
@@ -149,6 +172,7 @@ process_rebase_step() {
             finalize_injection
         else
             printf '\nCONFLICT during patch injection!\nResolve, then run: git inject --continue\n'
+            CLEANUP_ON_EXIT=false
             exit 1
         fi
     else
@@ -160,6 +184,7 @@ process_rebase_step() {
             printf "Successfully injected patch.\n"
         else
             printf '\nCONFLICT during rebase!\nResolve, then run: git inject --continue\n'
+            CLEANUP_ON_EXIT=false
             exit 1
         fi
     fi
@@ -178,10 +203,12 @@ finalize_injection() {
             printf "Successfully injected patch.\n"
         else
             printf '\nCONFLICT during post-injection rebase!\nResolve, then run: git inject --continue\n'
+            CLEANUP_ON_EXIT=false
             exit 1
         fi
     else
         printf 'Error: could not commit changes into target.\n'
+        CLEANUP_ON_EXIT=false
         exit 1
     fi
 }
@@ -215,6 +242,7 @@ case "$1" in
             printf "Successfully injected patch.\n"
             exit 0
         else
+            CLEANUP_ON_EXIT=false
             exit 1
         fi
         ;;
