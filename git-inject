@@ -8,7 +8,7 @@
 # Author:  Clitson Belleau <dev@clitson.nl>
 # License: GPL-3.0
 
-if ! GIT_DIR=$(git rev-parse --git-dir 2>/dev/null); then
+if ! GIT_DIR=$(git rev-parse --absolute-git-dir 2>/dev/null); then
     printf 'fatal: not a git repository\n'
     exit 1
 fi
@@ -34,7 +34,7 @@ inject_autostash(){
     local new_stash
 
     old_stash=$(git rev-parse --quiet --verify refs/stash)
-    git stash --include-untracked --message="INJECT: Save working tree" >/dev/null 2>&1
+    git stash push --include-untracked --message="INJECT: Save working tree" --quiet >/dev/null 2>&1
     new_stash=$(git rev-parse --quiet --verify refs/stash)
 
     if [ "$old_stash" != "$new_stash" ]; then
@@ -51,10 +51,10 @@ inject_cleanup() {
 
     # Return to the invocation branch before popping stash
     if [ -f "$STATE_DIR/ORIG_BRANCH" ]; then
-        origin=$(<"$STATE_DIR/ORIG_BRANCH")
+        origin=$(cat "$STATE_DIR/ORIG_BRANCH" 2>/dev/null)
         if [ -n "$origin" ] && [ "$(git branch --show-current)" != "$origin" ]; then
             printf 'Returning to branch %s...\n' "$origin"
-            git switch "$origin" >/dev/null 2>&1
+            git switch "$origin" >/dev/null 2>&1 || git checkout "$origin" >/dev/null 2>&1
         fi
     fi
 
