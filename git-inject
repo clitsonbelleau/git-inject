@@ -190,10 +190,13 @@ case "$1" in
             # GIT_EDITOR=true git cherry-pick --continue || exit 1
             git commit --amend $([ "$is_empty_commit" = true ] && echo "--allow-empty") --reuse-message="$target" --no-verify
             export_sequence_editor
-            git rebase --continue || exit 1
-            inject_cleanup
-            printf "Successfully injected patch '%s'.\n" "$patch"
-            exit 0
+            if git rebase --continue; then
+                inject_cleanup
+                printf "Successfully injected patch '%s'.\n" "$patch"
+                exit 0
+            else
+                exit 1
+            fi
         fi
 
         # Normal rebase continue
@@ -201,8 +204,10 @@ case "$1" in
         if git rebase --continue; then
             inject_cleanup
             printf "Successfully injected patch.\n"
+            exit 0
+        else
+            exit 1
         fi
-        exit 0
         ;;
     --abort)
         if [ -d "$STATE_DIR" ]; then
