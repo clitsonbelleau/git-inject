@@ -144,22 +144,16 @@ process_rebase_step() {
     current_head=$(git rev-parse HEAD)
     if [ "$(git rev-parse "$target")" = "$current_head" ]; then
         printf 'Injecting patch changes into target...\n'
+        echo "INJECTING" > "$STATE_DIR/STATUS"
         if git cherry-pick $options --no-commit "$patch"; then
-            git commit --amend $([ "$is_empty_commit" = true ] && echo "--allow-empty") --reuse-message="$target" --no-verify
-            export_sequence_editor
-            if git rebase --continue; then
-                inject_cleanup
-                printf "Successfully injected patch.\n"
-            else
-                printf '\nCONFLICT during post-injection rebase!\nResolve, then run: git inject --continue\n'
-                exit 1
-            fi
+            finalize_injection
         else
             printf '\nCONFLICT during patch injection!\nResolve, then run: git inject --continue\n'
             exit 1
         fi
     else
         # Stopped somewhere else (possible generic conflict)
+        echo "REBASING" > "$STATE_DIR/STATUS"
         export_sequence_editor
         if git rebase --continue; then
             inject_cleanup
@@ -171,6 +165,27 @@ process_rebase_step() {
     fi
 }
 
+finalize_injection() {
+    target=$(<"$STATE_DIR/TARGET")
+    patch=$(<"$STATE_DIR/PATCH")
+    [ -f "$STATE_DIR/is_empty_commit" ] && is_empty_commit=true
+
+    if git commit --amend $([ "$is_empty_commit" = true ] && echo "--allow-empty") --reuse-message="$target" --no-verify; then
+        echo "REBASING" > "$STATE_DIR/STATUS"
+        export_sequence_editor
+        if git rebase --continue; then
+            inject_cleanup
+            printf "Successfully injected patch.\n"
+        else
+            printf '\nCONFLICT during post-injection rebase!\nResolve, then run: git inject --continue\n'
+            exit 1
+        fi
+    else
+        printf 'Error: could not commit changes into target.\n'
+        exit 1
+    fi
+}
+
 case "$1" in
     --continue)
         if [ ! -d "$STATE_DIR" ]; then
@@ -178,6 +193,7 @@ case "$1" in
             exit 1
         fi
 
+        status=$(cat "$STATE_DIR/STATUS" 2>/dev/null || echo "UNKNOWN")
         [ -f "$STATE_DIR/is_empty_commit" ] && is_empty_commit=true
         origin=$(<"$STATE_DIR/ORIG_HEAD")
         patch=$(<"$STATE_DIR/PATCH")
@@ -185,18 +201,11 @@ case "$1" in
         target_branch=$(<"$STATE_DIR/TARGET_BRANCH")
         options=$(get_strategy_options)
 
-        if git rev-parse --verify CHERRY_PICK_HEAD >/dev/null 2>&1; then
-            git cherry-pick --quit
-            # GIT_EDITOR=true git cherry-pick --continue || exit 1
-            git commit --amend $([ "$is_empty_commit" = true ] && echo "--allow-empty") --reuse-message="$target" --no-verify
-            export_sequence_editor
-            if git rebase --continue; then
-                inject_cleanup
-                printf "Successfully injected patch '%s'.\n" "$patch"
-                exit 0
-            else
-                exit 1
-            fi
+        if [ "$status" = "INJECTING" ] || git rev-parse --verify CHERRY_PICK_HEAD >/dev/null 2>&1; then
+            printf 'Finalizing injection...\n'
+            git cherry-pick --quit >/dev/null 2>&1
+            finalize_injection
+            exit 0
         fi
 
         # Normal rebase continue
