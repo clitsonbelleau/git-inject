@@ -343,7 +343,7 @@ while [[ $# -gt 0 ]]; do
             printf "Error: Invalid use of '--clear'.\n"
             exit 1
             ;;
-        --staged)
+        -s | --staged)
             use_staged=true
             shift
             ;;
