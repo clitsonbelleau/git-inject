@@ -389,7 +389,7 @@ fi
 
 # Hash of the effective target branch name and HEAD to which we reset
 # upon reverting the injection
-git rev-parse HEAD > "$REVERT_HEAD"
+git rev-parse "$target_branch" > "$REVERT_HEAD"
 echo "$target_branch" > "$REVERT_BRANCH"
 
 # Hash of the <target> commit
