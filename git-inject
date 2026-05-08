@@ -403,6 +403,11 @@ if [ -z "$target" ] && [ -z "$patch" ]; then
     fi
 fi
 
+if [ "$use_copy" = true ] && [ "$use_branch" = false ]; then
+    printf "Error: Can only copy onto another branch.\n"
+    exit 1
+fi
+
 # Setup State
 mkdir -p "$STATE_DIR"
 # HEAD where git-inject was invoked
