@@ -112,6 +112,11 @@ parse() {
     fi
 }
 
+inject_success() {
+    printf "Successfully injected patch.\n"
+    inject_cleanup
+}
+
 get_strategy_options() {
     [ -f "$STATE_DIR/theirs" ] && printf -- '-X theirs'
 }
@@ -190,8 +195,8 @@ process_rebase_step() {
         echo "REBASING" > "$STATE_DIR/STATUS"
         export_sequence_editor
         if git rebase --continue; then
-            inject_cleanup
-            printf "Successfully injected patch.\n"
+            inject_success
+            exit 0
         else
             printf '\nCONFLICT during rebase!\nResolve, then run: git inject --continue\n'
             CLEANUP_ON_EXIT=false
@@ -205,12 +210,15 @@ finalize_injection() {
     patch=$(<"$STATE_DIR/PATCH")
     [ -f "$STATE_DIR/is_empty_commit" ] && is_empty_commit=true
 
+    # Capture the new target hash
+    git rev-parse HEAD > "$STATE_DIR/TARGET_NEW"
+
     if git commit --amend $([ "$is_empty_commit" = true ] && echo "--allow-empty") --reuse-message="$target" --no-verify; then
         echo "REBASING" > "$STATE_DIR/STATUS"
         export_sequence_editor
         if git rebase --continue; then
-            inject_cleanup
-            printf "Successfully injected patch.\n"
+            inject_success
+            exit 0
         else
             printf '\nCONFLICT during post-injection rebase!\nResolve, then run: git inject --continue\n'
             CLEANUP_ON_EXIT=false
@@ -248,8 +256,7 @@ case "$1" in
         # Normal rebase continue
         export_sequence_editor
         if git rebase --continue; then
-            inject_cleanup
-            printf "Successfully injected patch.\n"
+            inject_success
             exit 0
         else
             CLEANUP_ON_EXIT=false
@@ -478,8 +485,9 @@ if [ "$use_working_tree" = true ] || [ "$use_staged" = true ]; then
 
     if [ $(git rev-parse HEAD) = "$target" ]; then
         if git commit --amend $([ "$is_empty_commit" = true ] && echo "--allow-empty") --no-edit; then
-            printf "Successfully injected patch.\n"
-            inject_cleanup
+            # Capture the new target hash
+            git rev-parse HEAD > "$STATE_DIR/TARGET_NEW"
+            inject_success
             exit 0
         else
             printf "Error: Something unexpected happened.\n"
