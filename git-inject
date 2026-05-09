@@ -104,6 +104,14 @@ inject_cleanup() {
     [ -d "$STATE_DIR" ] && rm -rf "$STATE_DIR"
 }
 
+parse() {
+    if [ "$1" = "-s" ]; then
+        git rev-parse --short "$2"
+    else
+        git rev-parse "$1"
+    fi
+}
+
 get_strategy_options() {
     [ -f "$STATE_DIR/theirs" ] && printf -- '-X theirs'
 }
@@ -161,12 +169,14 @@ start_injection() {
 process_rebase_step() {
     patch=$(<"$STATE_DIR/PATCH")
     target=$(<"$STATE_DIR/TARGET")
+    s_patch=$(parse -s "$patch")
+    s_target=$(parse -s "$target")
     options=$(get_strategy_options)
 
     # Check if we stopped at our target for editing
     current_head=$(git rev-parse HEAD)
     if [ "$(git rev-parse "$target")" = "$current_head" ]; then
-        printf 'Injecting patch changes into target...\n'
+        printf 'Injecting %s -> %s...\n' "$s_patch" "$s_target"
         echo "INJECTING" > "$STATE_DIR/STATUS"
         if git cherry-pick $options --no-commit "$patch"; then
             finalize_injection
@@ -476,7 +486,7 @@ if [ "$use_working_tree" = true ] || [ "$use_staged" = true ]; then
             exit 1
         fi
     else
-        git commit -m "INJECT: Commit all changes for injection into $(git rev-parse --short "$target")" --quiet
+        git commit -m "INJECT: Commit all changes for injection into $(parse -s "$target")" --quiet
     fi
 
     patch="HEAD"
