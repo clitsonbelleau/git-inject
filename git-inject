@@ -50,6 +50,12 @@ Usage: git inject <target> [<patch>] [--copy] [--branch <branch>]
 EOF
 }
 
+___DISPLAY_STATUS___() {
+    echo "----------------"
+    git status -s
+    echo "----------------"
+}
+
 inject_autostash(){
     local old_stash
     local new_stash
@@ -489,6 +495,7 @@ if [ "$use_working_tree" = true ] || [ "$use_staged" = true ]; then
             printf 'Error: No staged changes to inject.\n'
             exit 1
         fi
+        ___DISPLAY_STATUS___
     fi
 
     if [ "$use_working_tree" = true ]; then
@@ -498,13 +505,13 @@ if [ "$use_working_tree" = true ] || [ "$use_staged" = true ]; then
         else
             inject_autostash
             git stash apply --quiet
+            ___DISPLAY_STATUS___
         fi
         git add -A
         printf 'Committed working files for injection.\n'
     fi
 
     if [ $(git rev-parse HEAD) = "$target" ]; then
-        git diff --name-status HEAD
         if git commit --amend $([ "$is_empty_commit" = true ] && echo "--allow-empty") --no-edit; then
             # Capture the new target hash
             git rev-parse HEAD > "$STATE_DIR/TARGET_NEW"
@@ -568,7 +575,5 @@ fi
 
 # Hash copy of the current HEAD on target branch.
 git rev-parse HEAD > "$BACKUP_HEAD"
-
-git diff --name-status HEAD
 
 start_injection
