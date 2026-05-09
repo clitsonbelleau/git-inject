@@ -552,7 +552,7 @@ fi
 [ "$use_staged" = true ] && touch "$STATE_DIR/use_staged"
 [ "$is_empty_commit" = true ] && touch "$STATE_DIR/is_empty_commit"
 
-if [ "$use_working_tree" = false ] && [ "$use_staged" = false ]; then
+if [ "$use_working_tree" = false ]; then
     inject_autostash
 fi
 
