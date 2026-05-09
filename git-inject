@@ -440,6 +440,11 @@ if [ "$use_copy" = true ] && [ "$use_branch" = false ]; then
     exit 1
 fi
 
+if [ -d "$STATE_DIR" ]; then
+    printf 'Error: An injection is already in progress.\nUse git inject --continue, --abort, or --clear.\n'
+    exit 1
+fi
+
 # Setup State
 mkdir -p "$STATE_DIR"
 # HEAD where git-inject was invoked
