@@ -497,7 +497,7 @@ if [ "$use_working_tree" = true ] || [ "$use_staged" = true ]; then
             exit 1
         else
             inject_autostash
-            git stash apply
+            git stash apply --quiet
         fi
         git add -A
         printf 'Committed working files for injection.\n'
