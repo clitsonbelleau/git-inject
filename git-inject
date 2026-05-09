@@ -54,6 +54,9 @@ inject_autostash(){
     local old_stash
     local new_stash
 
+    # Create state directory in case of using working tree or staged changes
+    mkdir -p "$STATE_DIR"
+
     old_stash=$(git rev-parse --quiet --verify refs/stash)
     git stash push --include-untracked --message="INJECT: Save working tree" --quiet >/dev/null 2>&1
     new_stash=$(git rev-parse --quiet --verify refs/stash)
