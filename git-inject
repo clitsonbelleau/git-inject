@@ -177,7 +177,7 @@ start_injection() {
     else
         rebase_start="--root"
     fi
-    if ! git rebase -i $options "$rebase_start" "$target_branch" 2>/dev/null; then
+    if ! git rebase --rebase-merges -i $options "$rebase_start" "$target_branch" 2>/dev/null; then
         printf '\nCONFLICT during rebase initialization!\nResolve, then run: git inject --continue\n'
         CLEANUP_ON_EXIT=false
         exit 1
