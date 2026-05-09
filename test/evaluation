@@ -1,0 +1,461 @@
+#!/usr/bin/env bash
+
+# test/evaluation
+# Intense Human-Behavior Mimicking Evaluation Harness for git-inject
+
+if [ ! -f "git-inject" ] || [ ! -f "test/sandbox" ]; then
+    echo "Please run this script from the root of the repository."
+    exit 1
+fi
+
+TEST_DIR="$(pwd)/test"
+SANDBOX_CMD="$(pwd)/test/sandbox"
+INJECT_CMD="$(pwd)/git-inject"
+
+DATETIME=$(date +"%Y%m%d_%H%M%S")
+REPORT="${TEST_DIR}/REPORT_${DATETIME}.md"
+SUMMARY="${TEST_DIR}/SUMMARY_${DATETIME}.md"
+LOG="${TEST_DIR}/TEST_OUT_${DATETIME}.log"
+
+mkdir -p "$TEST_DIR"
+echo "# Git-Inject Test Experiment Report" > "$REPORT"
+echo "Date: $(date)" >> "$REPORT"
+echo "---" >> "$REPORT"
+
+echo "# Git-Inject Test Summary" > "$SUMMARY"
+echo "Date: $(date)" >> "$SUMMARY"
+echo "---" >> "$SUMMARY"
+
+> "$LOG"
+
+log_cmd() {
+    echo "$ $@" >> "$LOG"
+    "$@" >> "$LOG" 2>&1
+}
+
+log_test() {
+    echo -e "\n### Test: $1" | tee -a "$REPORT"
+    echo '```text' >> "$REPORT"
+    echo "========================================" >> "$LOG"
+    echo "TEST: $1" >> "$LOG"
+    echo "========================================" >> "$LOG"
+}
+
+log_end() {
+    echo '```' >> "$REPORT"
+}
+
+FAILED_TESTS=0
+
+pass() {
+    echo "- [x] **PASSED**: $1" | tee -a "$SUMMARY"
+    echo "RESULT: SUCCESS" >> "$REPORT"
+}
+
+fail() {
+    echo "- [ ] **FAILED**: $1 - $2" | tee -a "$SUMMARY"
+    echo "RESULT: FAILED - $2" >> "$REPORT"
+    FAILED_TESTS=$((FAILED_TESTS + 1))
+}
+
+setup_test() {
+    "$SANDBOX_CMD" setup >> "$LOG" 2>&1
+    cd git-inject-sandbox || exit 1
+}
+
+teardown_test() {
+    cd .. || exit 1
+    "$SANDBOX_CMD" teardown >> "$LOG" 2>&1
+}
+
+export GIT_AUTHOR_NAME="Test User"
+export GIT_AUTHOR_EMAIL="test@example.com"
+export GIT_COMMITTER_NAME="Test User"
+export GIT_COMMITTER_EMAIL="test@example.com"
+
+
+# 1. Intense Deep Tree Cross-Branch Copy (article to master)
+log_test "1. Deep Tree Cross-Branch Copy (article to master)"
+setup_test
+TARGET=$(git log --all --format="%H" --grep="master: commit 3")
+PATCH=$(git log --all --format="%H" --grep="article: commit 4")
+# Human behavior: User is working on 'article' branch, dirty tree, decides to copy a patch to 'master'
+git checkout article >> "$LOG" 2>&1
+echo "dirty" > human_dirty_file.txt
+log_cmd "$INJECT_CMD" "$TARGET" "$PATCH" --copy -b master
+NEW_TARGET=$(git log master -1 --format="%H" --grep="master: commit 3")
+if git show "$NEW_TARGET" --name-only | grep -q "article_4.csv"; then
+    if [ -f "human_dirty_file.txt" ] && [ "$(git branch --show-current)" = "article" ]; then
+        pass "Test 1"
+    else
+        fail "Test 1" "Did not maintain dirty state or branch correctly"
+    fi
+else
+    fail "Test 1" "article_4.csv not found in master history"
+fi
+teardown_test
+log_end
+
+
+# 2. Intense Working Tree (-w) on docs branch
+log_test "2. Intense Working Tree (-w) on docs branch"
+setup_test
+TARGET=$(git log --all --format="%H" --grep="docs: commit 4")
+git checkout docs >> "$LOG" 2>&1
+# Human behavior: User tracks a new file, modifies existing, deletes another, and leaves one untracked
+echo "new_tracked" > new_tracked.txt
+git add new_tracked.txt >> "$LOG" 2>&1
+echo "modified" >> docs_1.txt
+git rm docs_2.md >> "$LOG" 2>&1
+echo "untracked" > untracked.txt
+log_cmd "$INJECT_CMD" -w "$TARGET"
+NEW_TARGET=$(git log -1 --format="%H" --grep="docs: commit 4")
+if git show "$NEW_TARGET" | grep -q "new_tracked" && \
+   git show "$NEW_TARGET" | grep -q "modified" && \
+   git show "$NEW_TARGET" | grep -q "untracked" && \
+   ! git ls-tree -r "$NEW_TARGET" | grep -q "docs_2.md"; then
+    pass "Test 2"
+else
+    fail "Test 2" "Working tree changes (tracked/modified/deleted/untracked) not properly injected"
+fi
+teardown_test
+log_end
+
+
+# 3. Intense Staged (-s) with conflicting unstaged changes on feature branch
+log_test "3. Intense Staged (-s) on feature branch"
+setup_test
+TARGET=$(git log --all --format="%H" --grep="feature: commit 2")
+git checkout feature >> "$LOG" 2>&1
+# Human behavior: stage part of a file, leave the rest unstaged
+echo "staged_change" > feature_1.txt
+git add feature_1.txt >> "$LOG" 2>&1
+echo "unstaged_change" >> feature_1.txt
+log_cmd "$INJECT_CMD" -s "$TARGET"
+NEW_TARGET=$(git log -1 --format="%H" --grep="feature: commit 2")
+if git show "$NEW_TARGET" | grep -q "staged_change" && ! git show "$NEW_TARGET" | grep -q "unstaged_change"; then
+    if grep -q "unstaged_change" feature_1.txt; then
+        pass "Test 3"
+    else
+        fail "Test 3" "Unstaged changes were lost from working tree"
+    fi
+else
+    fail "Test 3" "Staged changes injected improperly"
+fi
+teardown_test
+log_end
+
+
+# 4. Intense Conflict Generation, Switch branches midway, Continue
+log_test "4. Conflict Generation & Multi-branch Continue"
+setup_test
+git checkout reference >> "$LOG" 2>&1
+TARGET=$(git log --all --format="%H" --grep="reference: commit 2")
+# Create conflict scenario on reference
+git checkout -b reference_conflict "$TARGET" >> "$LOG" 2>&1
+echo "conflict reference" > topic_3.json
+git add topic_3.json >> "$LOG" 2>&1
+git commit -m "Conflict Target Ref" >> "$LOG" 2>&1
+TARGET_C=$(git rev-parse HEAD)
+echo "dummy" > dummy.txt
+git add dummy.txt >> "$LOG" 2>&1
+git commit -m "Dummy Ref" >> "$LOG" 2>&1
+
+git checkout topic >> "$LOG" 2>&1
+echo "conflict topic" > topic_3.json
+git add topic_3.json >> "$LOG" 2>&1
+git commit -m "Conflict Patch Topic" >> "$LOG" 2>&1
+PATCH_C=$(git rev-parse HEAD)
+
+git checkout reference_conflict >> "$LOG" 2>&1
+log_cmd "$INJECT_CMD" "$TARGET_C" "$PATCH_C" -b reference_conflict
+# Human behavior: context switch midway through conflict
+git checkout master >> "$LOG" 2>&1
+git checkout reference_conflict >> "$LOG" 2>&1
+echo "resolved" > topic_3.json
+git add topic_3.json >> "$LOG" 2>&1
+log_cmd "$INJECT_CMD" --continue
+NEW_TARGET=$(git log -1 --format="%H" --grep="Conflict Target Ref")
+if git show "$NEW_TARGET" | grep -q "resolved"; then
+    pass "Test 4"
+else
+    fail "Test 4" "Failed to resolve conflict after context switch"
+fi
+teardown_test
+log_end
+
+
+# 5. Intense Conflict Abort (--abort)
+log_test "5. Intense Conflict Abort (--abort)"
+setup_test
+git checkout article >> "$LOG" 2>&1
+TARGET=$(git log --all --format="%H" --grep="article: commit 2")
+git checkout -b article_conflict "$TARGET" >> "$LOG" 2>&1
+echo "conflict A" > article_1.txt
+git add article_1.txt >> "$LOG" 2>&1
+git commit -m "Conflict Target Article" >> "$LOG" 2>&1
+TARGET_C=$(git rev-parse HEAD)
+echo "dummy" > dummy.txt
+git add dummy.txt >> "$LOG" 2>&1
+git commit -m "Dummy Art" >> "$LOG" 2>&1
+ORIG_HEAD=$(git rev-parse HEAD)
+
+git checkout docs >> "$LOG" 2>&1
+echo "conflict B" > article_1.txt
+git add article_1.txt >> "$LOG" 2>&1
+git commit -m "Conflict Patch Docs" >> "$LOG" 2>&1
+PATCH_C=$(git rev-parse HEAD)
+
+git checkout article_conflict >> "$LOG" 2>&1
+log_cmd "$INJECT_CMD" "$TARGET_C" "$PATCH_C" -b article_conflict
+# Human behavior: messes around, deletes files, then panics and aborts
+rm -f article_1.txt
+echo "mess" > dummy.txt
+log_cmd "$INJECT_CMD" --abort
+if [ "$(git rev-parse article_conflict)" = "$ORIG_HEAD" ]; then
+    pass "Test 5"
+else
+    fail "Test 5" "Abort failed to cleanly restore branch state"
+fi
+teardown_test
+log_end
+
+
+# 6. Intense Revert (--revert) crossing branches
+log_test "6. Intense Revert crossing branches"
+setup_test
+TARGET=$(git log --all --format="%H" --grep="master: commit 2")
+PATCH=$(git log --all --format="%H" --grep="feature: commit 5")
+git checkout feature >> "$LOG" 2>&1
+ORIG_MASTER=$(git rev-parse master)
+log_cmd "$INJECT_CMD" "$TARGET" "$PATCH" --copy -b master
+# Revert from feature branch!
+log_cmd "$INJECT_CMD" --revert
+if [ "$(git rev-parse master)" = "$ORIG_MASTER" ] && [ "$(git branch --show-current)" = "feature" ]; then
+    pass "Test 6"
+else
+    fail "Test 6" "Revert did not accurately cross branches"
+fi
+teardown_test
+log_end
+
+
+# 7. Intense Detached HEAD handling
+log_test "7. Detached HEAD edge case"
+setup_test
+TARGET=$(git log --all --format="%H" --grep="topic: commit 2")
+PATCH=$(git log --all --format="%H" --grep="topic: commit 4")
+git checkout topic~2 >> "$LOG" 2>&1 # detached
+log_cmd "$INJECT_CMD" "$TARGET" "$PATCH"
+if grep -q "detached HEAD state" "$LOG"; then
+    pass "Test 7"
+else
+    fail "Test 7" "Failed to catch detached HEAD"
+fi
+teardown_test
+log_end
+
+
+# 8. Intense Strategy --theirs across master/docs
+log_test "8. Strategy --theirs"
+setup_test
+TARGET=$(git log --all --format="%H" --grep="master: commit 2")
+git checkout -b strategy_conflict "$TARGET" >> "$LOG" 2>&1
+echo "master content" > docs_5.yml
+git add docs_5.yml >> "$LOG" 2>&1
+git commit -m "Conflict Target Strategy" >> "$LOG" 2>&1
+TARGET_C=$(git rev-parse HEAD)
+echo "dummy" > dummy.txt
+git add dummy.txt >> "$LOG" 2>&1
+git commit -m "Dummy Strategy" >> "$LOG" 2>&1
+
+git checkout docs >> "$LOG" 2>&1
+echo "docs content" > docs_5.yml
+git add docs_5.yml >> "$LOG" 2>&1
+git commit -m "Conflict Patch Strategy" >> "$LOG" 2>&1
+PATCH_C=$(git rev-parse HEAD)
+
+git checkout strategy_conflict >> "$LOG" 2>&1
+log_cmd "$INJECT_CMD" "$TARGET_C" "$PATCH_C" -b strategy_conflict --theirs
+NEW_TARGET=$(git log strategy_conflict -1 --format="%H" --grep="Conflict Target Strategy")
+if git show "$NEW_TARGET" | grep -q "docs content"; then
+    pass "Test 8"
+else
+    fail "Test 8" "Strategy --theirs failed to override"
+fi
+teardown_test
+log_end
+
+
+# 9. Intense Clear State (--clear) manually aborted
+log_test "9. Manual Abort & Clear State (--clear)"
+setup_test
+TARGET=$(git log --all --format="%H" --grep="article: commit 2")
+git checkout -b clear_conflict "$TARGET" >> "$LOG" 2>&1
+echo "conflict A" > article_1.txt
+git add article_1.txt >> "$LOG" 2>&1
+git commit -m "Conflict Target Clear" >> "$LOG" 2>&1
+TARGET_C=$(git rev-parse HEAD)
+
+git checkout article >> "$LOG" 2>&1
+echo "conflict B" > article_1.txt
+git add article_1.txt >> "$LOG" 2>&1
+git commit -m "Conflict Patch Clear" >> "$LOG" 2>&1
+PATCH_C=$(git rev-parse HEAD)
+
+git checkout clear_conflict >> "$LOG" 2>&1
+log_cmd "$INJECT_CMD" "$TARGET_C" "$PATCH_C" -b clear_conflict
+# User abandons using git native commands
+git rebase --abort >> "$LOG" 2>&1
+git cherry-pick --abort >> "$LOG" 2>&1 || true
+log_cmd "$INJECT_CMD" --clear
+if [ ! -d ".git/INJECT_STATE" ]; then
+    pass "Test 9"
+else
+    fail "Test 9" "State not cleared"
+fi
+teardown_test
+log_end
+
+
+# 10. Intense Implicit Patch on Reference
+log_test "10. Implicit Patch on Reference"
+setup_test
+git checkout reference >> "$LOG" 2>&1
+TARGET=$(git log --all --format="%H" --grep="reference: commit 1")
+PATCH=$(git log --all --format="%H" --grep="reference: commit 5")
+git reset --hard "$PATCH" >> "$LOG" 2>&1
+log_cmd "$INJECT_CMD" "$TARGET"
+NEW_TARGET=$(git log reference -1 --format="%H" --grep="reference: commit 1")
+if git show "$NEW_TARGET" --name-only | grep -q "reference_5.yml"; then
+    pass "Test 10"
+else
+    fail "Test 10" "Implicit patch failed on reference"
+fi
+teardown_test
+log_end
+
+# 11. Recursive Guard Test
+log_test "11. Recursive Guard Test"
+setup_test
+TARGET=$(git log --all --format="%H" --grep="master: commit 2")
+git checkout -b recursive_conflict "$TARGET" >> "$LOG" 2>&1
+echo "conflict A" > master_1.txt
+git add master_1.txt >> "$LOG" 2>&1
+git commit -m "Conflict Target Rec" >> "$LOG" 2>&1
+TARGET_C=$(git rev-parse HEAD)
+
+git checkout master >> "$LOG" 2>&1
+echo "conflict B" > master_1.txt
+git add master_1.txt >> "$LOG" 2>&1
+git commit -m "Conflict Patch Rec" >> "$LOG" 2>&1
+PATCH_C=$(git rev-parse HEAD)
+
+git checkout topic >> "$LOG" 2>&1
+log_cmd "$INJECT_CMD" "$TARGET_C" "$PATCH_C" -b recursive_conflict
+# Now, try to start another injection
+log_cmd "$INJECT_CMD" "$TARGET_C" "$PATCH_C"
+if grep -q "already in progress" "$LOG"; then
+    pass "Test 11"
+else
+    fail "Test 11" "Recursive guard did not block second injection"
+fi
+teardown_test
+log_end
+
+
+# 12. Merge-Bubble Integrity
+log_test "12. Merge-Bubble Integrity"
+setup_test
+git checkout master >> "$LOG" 2>&1
+git checkout -b feature_bubble master~3 >> "$LOG" 2>&1
+echo "bubble" > bubble.txt
+git add bubble.txt >> "$LOG" 2>&1
+git commit -m "Bubble Commit" >> "$LOG" 2>&1
+BUBBLE_COMMIT=$(git rev-parse HEAD)
+git checkout master >> "$LOG" 2>&1
+git merge --no-ff feature_bubble -m "Merge bubble" >> "$LOG" 2>&1
+MERGE_COMMIT=$(git rev-parse HEAD)
+
+# Inject into master~6 (before the bubble)
+TARGET=$(git log --all --format="%H" --grep="master: commit 4")
+PATCH=$(git log --all --format="%H" --grep="master: commit 10")
+log_cmd "$INJECT_CMD" "$TARGET" "$PATCH"
+if git log --merges | grep -q "Merge bubble"; then
+    pass "Test 12"
+else
+    fail "Test 12" "Merge bubble was flattened during rebase"
+fi
+teardown_test
+log_end
+
+
+# 13. Pre-existing Stash Stack Stress
+log_test "13. Pre-existing Stash Stack Stress"
+setup_test
+TARGET=$(git log --all --format="%H" --grep="docs: commit 4")
+git checkout docs >> "$LOG" 2>&1
+# Push 3 dummy stashes
+echo "stash1" > stash1.txt; git add stash1.txt >> "$LOG" 2>&1; git stash push -m "stash1" >> "$LOG" 2>&1
+echo "stash2" > stash2.txt; git add stash2.txt >> "$LOG" 2>&1; git stash push -m "stash2" >> "$LOG" 2>&1
+echo "stash3" > stash3.txt; git add stash3.txt >> "$LOG" 2>&1; git stash push -m "stash3" >> "$LOG" 2>&1
+INITIAL_STASH_COUNT=$(git stash list | wc -l)
+
+echo "new_tracked" > new_tracked.txt
+git add new_tracked.txt >> "$LOG" 2>&1
+log_cmd "$INJECT_CMD" -w "$TARGET"
+FINAL_STASH_COUNT=$(git stash list | wc -l)
+
+if [ "$INITIAL_STASH_COUNT" -eq "$FINAL_STASH_COUNT" ]; then
+    pass "Test 13"
+else
+    fail "Test 13" "Stash stack count changed from $INITIAL_STASH_COUNT to $FINAL_STASH_COUNT"
+fi
+teardown_test
+log_end
+
+
+# 14. Deep Subdirectory Invocation
+log_test "14. Deep Subdirectory Invocation"
+setup_test
+TARGET=$(git log --all --format="%H" --grep="master: commit 5")
+git checkout master >> "$LOG" 2>&1
+mkdir -p src/components/styles
+cd src/components/styles || exit 1
+echo "deep_untracked" > deep.txt
+log_cmd "$INJECT_CMD" -w "$TARGET"
+cd ../../.. || exit 1
+NEW_TARGET=$(git log -1 --format="%H" --grep="master: commit 5")
+if git show "$NEW_TARGET" | grep -q "deep_untracked"; then
+    pass "Test 14"
+else
+    fail "Test 14" "Deep subdirectory changes not injected"
+fi
+teardown_test
+log_end
+
+# 15. Gitignore Respect Test
+log_test "15. Gitignore Respect Test"
+setup_test
+TARGET=$(git log --all --format="%H" --grep="master: commit 5")
+git checkout master >> "$LOG" 2>&1
+echo "ignored_file.tmp" > .gitignore
+git add .gitignore && git commit -m "Add gitignore" >> "$LOG" 2>&1
+echo "should_be_ignored" > ignored_file.tmp
+log_cmd "$INJECT_CMD" -w "$TARGET"
+NEW_TARGET=$(git log -1 --format="%H" --grep="master: commit 5")
+if ! git ls-tree -r "$NEW_TARGET" | grep -q "ignored_file.tmp"; then
+    pass "Test 15"
+else
+    fail "Test 15" "Ignored file was incorrectly injected into history"
+fi
+teardown_test
+log_end
+
+if [ "$FAILED_TESTS" -gt 0 ]; then
+    echo -e "\nEvaluation complete with $FAILED_TESTS failures. Check test/SUMMARY_${DATETIME}.md and test/REPORT_${DATETIME}.md for details."
+    exit 1
+else
+    echo -e "\nEvaluation complete! All tests passed. Check test/SUMMARY_${DATETIME}.md and test/REPORT_${DATETIME}.md for details."
+    exit 0
+fi
