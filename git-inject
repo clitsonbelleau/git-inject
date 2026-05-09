@@ -113,6 +113,18 @@ parse() {
 }
 
 inject_success() {
+    target_old=$(cat "$STATE_DIR/TARGET" 2>/dev/null)
+    target_new=$(cat "$STATE_DIR/TARGET_NEW" 2>/dev/null)
+
+    if [ -n "$target_old" ] && [ -n "$target_new" ]; then
+        patch=$(cat "$STATE_DIR/PATCH" 2>/dev/null)
+        [ -z "$patch" ] && patch="CHANGES" || patch=$(parse -s "$patch")
+        echo "----------------"
+        printf "Injected %s -> %s\n" "$patch" "$(parse -s "$target_old")"
+        printf " Updated %s -> %s\n" "$(parse -s "$target_old")" "$(parse -s "$target_new")"
+        git diff -z --name-only "$target_old".."$target_new" | xargs -0 git diff --stat "$target_old".."$target_new" --
+    fi
+
     printf "Successfully injected patch.\n"
     inject_cleanup
 }
@@ -210,10 +222,10 @@ finalize_injection() {
     patch=$(<"$STATE_DIR/PATCH")
     [ -f "$STATE_DIR/is_empty_commit" ] && is_empty_commit=true
 
-    # Capture the new target hash
-    git rev-parse HEAD > "$STATE_DIR/TARGET_NEW"
-
     if git commit --amend $([ "$is_empty_commit" = true ] && echo "--allow-empty") --reuse-message="$target" --no-verify; then
+        # Capture the new target hash
+        git rev-parse HEAD > "$STATE_DIR/TARGET_NEW"
+
         echo "REBASING" > "$STATE_DIR/STATUS"
         export_sequence_editor
         if git rebase --continue; then
@@ -484,6 +496,7 @@ if [ "$use_working_tree" = true ] || [ "$use_staged" = true ]; then
     fi
 
     if [ $(git rev-parse HEAD) = "$target" ]; then
+        git diff --name-status HEAD
         if git commit --amend $([ "$is_empty_commit" = true ] && echo "--allow-empty") --no-edit; then
             # Capture the new target hash
             git rev-parse HEAD > "$STATE_DIR/TARGET_NEW"
@@ -547,5 +560,7 @@ fi
 
 # Hash copy of the current HEAD on target branch.
 git rev-parse HEAD > "$BACKUP_HEAD"
+
+git diff --name-status HEAD
 
 start_injection
