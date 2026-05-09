@@ -4,4 +4,4 @@
 *.sh
 *.bak
 git-inject-sandbox/
-test/REPORT.md
+test/*.md
