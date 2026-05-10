@@ -42,9 +42,13 @@ trap cleanup_trap EXIT
 
 usage() {
     cat << EOF
-Usage: git inject <target> [<patch>] [--copy] [--branch <branch>]
-       git inject [--working-tree | --staged] <target> [--branch <branch>]
-       git inject (--continue | --abort | --revert | --clear)
+Usage: git inject <target> [<patch>]
+   or: git inject (--continue | --abort)
+
+       <patch> is an optional requirement.
+
+       If <patch> is not specified, HEAD will be used as
+       the value of <patch>.
 
        Run 'git help inject' to view the manual.
 EOF
