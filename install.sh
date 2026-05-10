@@ -8,6 +8,19 @@ SCRIPT_NAME="git-inject"
 HTML_NAME="git-inject.html"
 MAN_NAME="git-inject.1"
 
+# UI Styles
+BOLD='\033[1m'
+GREEN='\033[0;32m'
+CYAN='\033[0;36m'
+YELLOW='\033[0;33m'
+RED='\033[0;31m'
+NC='\033[0m'
+
+header() { printf "\n${BOLD}${CYAN}==>${NC} ${BOLD}%s${NC}\n" "$1"; }
+success() { printf "  ${GREEN}[OK]${NC} %s\n" "$1"; }
+error() { printf "  ${RED}[FAIL]${NC} %s\n" "$1"; }
+warn() { printf "  ${YELLOW}[!]${NC} %s\n" "$1"; }
+
 # Identify the target directory for the script
 if [ -d "$HOME/bin" ]; then
     BIN_DEST="$HOME/bin"
@@ -16,19 +29,20 @@ else
 fi
 
 # Install the script
-printf "Installing $SCRIPT_NAME to $BIN_DEST...\n"
+header "Installing $SCRIPT_NAME tool"
 if [ ! -w "$BIN_DEST" ]; then
-    printf "Permission denied. Attempting with sudo...\n"
+    warn "Permission denied for $BIN_DEST. Attempting with sudo..."
     sudo cp "$SCRIPT_NAME" "$BIN_DEST/"
     sudo chmod +x "$BIN_DEST/$SCRIPT_NAME"
 else
     cp "$SCRIPT_NAME" "$BIN_DEST/"
     chmod +x "$BIN_DEST/$SCRIPT_NAME"
 fi
+success "Installed script to: $BIN_DEST/$SCRIPT_NAME"
 
 # Install the Man page
 MAN_DIR="/usr/local/share/man/man1"
-printf "Installing man page to $MAN_DIR...\n"
+header "Installing man page"
 if [ ! -d "$MAN_DIR" ]; then
     sudo mkdir -p "$MAN_DIR" 2>/dev/null || mkdir -p "$MAN_DIR"
 fi
@@ -38,30 +52,36 @@ if [ ! -w "$MAN_DIR" ]; then
 else
     cp "$MAN_NAME" "$MAN_DIR/"
 fi
+success "Man page installed to $MAN_DIR"
 
 # Install the HTML documentation
 HTML_PATH=$(git --html-path 2>/dev/null || true)
 
 if [ -n "$HTML_PATH" ] && [ -d "$HTML_PATH" ]; then
-    printf "Installing HTML documentation to $HTML_PATH...\n"
+    header "Installing HTML documentation"
     if [ ! -w "$HTML_PATH" ]; then
-        printf "Permission denied. Attempting with sudo...\n"
+        warn "Permission denied for $HTML_PATH. Attempting with sudo..."
         sudo cp "$HTML_NAME" "$HTML_PATH/"
     else
         cp "$HTML_NAME" "$HTML_PATH/"
     fi
-    printf "Success! You can now run 'git help inject' to view the documentation.\n"
+    success "Installed documentation to system Git docs."
+    printf "     You can now run 'git help inject' to view the documentation.\n"
 else
-    printf "Could not find Git HTML documentation path. HTML docs not installed.\n"
+    warn "Could not find Git HTML documentation path. HTML docs not installed."
 fi
 
-printf "\nInstallation complete. Try:\n"
-printf "  man git-inject    (For the man page)\n"
-printf "  git inject        (To use the tool)\n"
+# Finalizing
+printf "\n${BOLD}${GREEN}Done! Installation complete.${NC}\n"
 
 # PATH check
 if [[ ":$PATH:" != *":$BIN_DEST:"* ]]; then
-    printf "\nWARNING: $BIN_DEST is not in your PATH.\n"
+    printf "\n${YELLOW}[!] WARNING: $BIN_DEST is not in your PATH.${NC}\n"
     printf "To use 'git inject' globally, add this to your .bashrc or .zshrc:\n"
-    printf "  export PATH=\"\$PATH:$BIN_DEST\"\n"
+    printf "  ${BOLD}export PATH=\"\$PATH:$BIN_DEST\"${NC}\n"
 fi
+
+printf "\n${BOLD}Try it out:${NC}\n"
+printf "  ${CYAN}man git-inject${NC}    (For the man page)\n"
+printf "  ${CYAN}git inject${NC}        (To use the tool)\n"
+printf "  ${CYAN}git help inject${NC}   (For HTML documentation)\n"
