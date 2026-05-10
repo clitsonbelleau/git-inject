@@ -423,6 +423,11 @@ if [ "$use_staged" = true ]; then
     if [ "$use_copy" = true ]; then
         printf "Error: Cannot copy from index. Please commit your changes before copying."
     fi
+    if [ -n "$patch" ]; then
+        printf 'Using staged changes. Patch will be reset to head to HEAD.\n'
+        printf 'Verify arguments and run the command again.\n'
+        exit 1
+    fi
 fi
 
 # If only target is specified, patch defaults to HEAD
