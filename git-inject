@@ -294,7 +294,7 @@ case "$1" in
             # Reset history on target branch
             git switch "$target_branch" >/dev/null 2>&1
             [ -n "$b_head" ] && git reset --hard "$b_head" >/dev/null 2>&1
-            printf "Injection aborted. Returned %s to original state on %s.\n" "$target_branch" "$b_head"
+            printf "Injection aborted. Returned branch '%s' to HEAD at %s.\n" "$target_branch" "$(parse -s "$b_head")"
             # Switch back to invocation branch and cleanup
             git switch "$origin" >/dev/null 2>&1
             inject_cleanup "abort"
