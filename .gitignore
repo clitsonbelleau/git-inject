@@ -1,3 +1,8 @@
 *.pdf
 *.txt
+*.log
+*.bak
+*.sh
+!install.sh
 git-inject-sandbox/
+test/
