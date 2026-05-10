@@ -528,6 +528,7 @@ if [ "$use_working_tree" = true ] || [ "$use_staged" = true ]; then
         fi
     else
         git commit -m "INJECT: Commit all changes for injection into $(parse -s "$target")" --quiet
+        printf "Committed changes for injection ($(parse -s "HEAD")).\n"
     fi
 
     patch="HEAD"
