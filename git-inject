@@ -513,7 +513,7 @@ if [ "$use_working_tree" = true ] || [ "$use_staged" = true ]; then
             ___DISPLAY_STATUS___
         fi
         git add -A
-        printf 'Committed working files for injection.\n'
+        printf "Indexed working tree changes for injection.\n"
     fi
 
     if [ $(git rev-parse HEAD) = "$target" ]; then
