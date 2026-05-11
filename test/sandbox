@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
 setup_env() {
     echo "Creating a fresh test directory..."
     mkdir -p "git-inject-sandbox"
@@ -8,6 +10,29 @@ setup_env() {
     if [ ! -d .git ]; then
         git init
     fi
+
+    generate_content() {
+        local ext=$1
+        local prefix=$2
+        local i=$3
+        local file=$4
+
+        local tpl_dir="$SCRIPT_DIR/templates"
+        local tpl_name="$ext.tpl"
+
+        # Map specific extensions
+        case "$ext" in
+            md) tpl_name="txt.tpl" ;;
+            yaml) tpl_name="yml.tpl" ;;
+        esac
+
+        local tpl_file="$tpl_dir/$tpl_name"
+        if [ ! -f "$tpl_file" ]; then
+            tpl_file="$tpl_dir/fallback.tpl"
+        fi
+
+        sed "s/{{PREFIX}}/$prefix/g; s/{{INDEX}}/$i/g" "$tpl_file" > "$file"
+    }
 
     make_commits() {
         local prefix=$1
@@ -20,7 +45,7 @@ setup_env() {
             local ext=${exts[$((i-1))]}
             local filename="${prefix}_${i}.${ext}"
 
-            echo "Data for $prefix commit $i" > "$filename"
+            generate_content "$ext" "$prefix" "$i" "$filename"
             git add "$filename" >/dev/null 2>&1
             git commit -m "$prefix: commit $i (adds $filename)" --quiet
         done
@@ -49,7 +74,7 @@ setup_env() {
     make_commits "reference" 5
 
     echo ""
-    echo "Test environment created: ./git-inject-test/"
+    echo "Test environment created: ./git-inject-sandbox/"
     echo ""
     git log --graph --all --oneline --decorate
 }
@@ -69,7 +94,7 @@ case "$1" in
     *)
         echo "Usage: $0 {setup|teardown}"
         echo ""
-        echo "  setup        Creates the 'git-inject-test' environemnt and generates"
+        echo "  setup        Creates the 'git-inject-sandbox' environment and generates"
         echo "               the branches/commits."
         echo "  teardown     Deletes the test environment."
         exit 1
