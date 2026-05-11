@@ -528,6 +528,11 @@ if [ -d "$STATE_DIR" ]; then
     exit 1
 fi
 
+if [ -d "$GIT_DIR/rebase-merge" ] || [ -d "$GIT_DIR/rebase-apply" ] || [ -f "$GIT_DIR/CHERRY_PICK_HEAD" ]; then
+    printf "Error: A git operation (rebase/cherry-pick/am) is already in progress.\n"
+    exit 1
+fi
+
 # Setup State
 mkdir -p "$STATE_DIR"
 # HEAD where git-inject was invoked
