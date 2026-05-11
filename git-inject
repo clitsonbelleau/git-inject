@@ -2,6 +2,7 @@
 
 # git-inject: Merge a newer commit into an older commit
 # Usage: git inject <target> [<patch>] [--copy] [--branch <branch>]
+#        git inject [<patch>] --into <target> [--copy] [--branch <branch>]
 #        git inject [--working-tree | --staged] <target> [--branch <branch>]
 #        git inject (--continue | --abort | --revert | --clear)
 
@@ -43,6 +44,7 @@ trap cleanup_trap EXIT
 usage() {
     cat << EOF
 Usage: git inject <target> [<patch>]
+   or: git inject [<patch>] --into <target>
    or: git inject (--continue | --abort)
 
        <patch> is an optional requirement.
@@ -351,12 +353,8 @@ use_copy=false
 use_theirs=false
 use_staged=false
 is_empty_commit=false
-
-if [[ "$1" == "--into" ]]; then
-    target="$2"
-    patch="HEAD"
-    shift 2
-fi
+into_target=""
+positional_args=()
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -378,8 +376,8 @@ while [[ $# -gt 0 ]]; do
             shift 2
             ;;
         --into)
-            printf "Error: '--into' must be the first argument.\n"
-            exit 1
+            into_target="$2"
+            shift 2
             ;;
         --clear)
             printf "Error: Invalid use of '--clear'.\n"
@@ -398,18 +396,32 @@ while [[ $# -gt 0 ]]; do
             exit 1
             ;;
         *)
-            if [ -z "$target" ]; then
-                target="$1"
-            elif [ -z "$patch" ]; then
-                patch="$1"
-            else
-                printf "Error: Unexpected argument %s\n" "$1"
-                exit 1
-            fi
+            positional_args+=("$1")
             shift
             ;;
     esac
 done
+
+# Resolve target and patch based on positional arguments and --into
+if [ -n "$into_target" ]; then
+    target="$into_target"
+    if [ ${#positional_args[@]} -gt 1 ]; then
+        printf "Error: Too many arguments when using '--into'.\n"
+        exit 1
+    elif [ ${#positional_args[@]} -eq 1 ]; then
+        patch="${positional_args[0]}"
+    fi
+else
+    if [ ${#positional_args[@]} -gt 2 ]; then
+        printf "Error: Too many arguments.\n"
+        exit 1
+    elif [ ${#positional_args[@]} -eq 2 ]; then
+        target="${positional_args[0]}"
+        patch="${positional_args[1]}"
+    elif [ ${#positional_args[@]} -eq 1 ]; then
+        target="${positional_args[0]}"
+    fi
+fi
 
 if [ "$use_working_tree" = true ]; then
     if [ "$use_copy" = true ]; then
