@@ -532,6 +532,77 @@ fi
 teardown_test
 log_end
 
+# 20. Intense --file with spaces and quotes
+log_test "20. Intense --file with spaces and quotes"
+setup_test
+git checkout master >> "$LOG" 2>&1
+echo "weird" > "weird ' file .txt"
+git add "weird ' file .txt" >> "$LOG" 2>&1
+git commit -m "Add weird file" >> "$LOG" 2>&1
+echo "more weird" > "weird ' file .txt"
+log_cmd "$INJECT_CMD" HEAD --file "weird ' file .txt"
+if git show HEAD | grep -q "more weird"; then
+    pass "Test 20"
+else
+    fail "Test 20" "Failed to handle spaces and quotes in --file"
+fi
+teardown_test
+log_end
+
+
+# 21. Intense --file with deleted file
+log_test "21. Intense --file with deleted file"
+setup_test
+TARGET=$(git log --all --format="%H" --grep="master: commit 2")
+git checkout master >> "$LOG" 2>&1
+rm master_3.json
+log_cmd "$INJECT_CMD" "$TARGET" --file master_3.json
+NEW_TARGET=$(git log master -1 --format="%H" --grep="master: commit 2")
+if ! git ls-tree -r "$NEW_TARGET" | grep -q "master_3.json"; then
+    pass "Test 21"
+else
+    fail "Test 21" "Failed to inject file deletion"
+fi
+teardown_test
+log_end
+
+
+# 22. Intense empty commit injection into empty target
+log_test "22. Intense empty commit injection into empty target"
+setup_test
+git checkout master >> "$LOG" 2>&1
+git commit --allow-empty -m "Empty Target" >> "$LOG" 2>&1
+TARGET_E=$(git rev-parse HEAD)
+git commit --allow-empty -m "Empty Patch" >> "$LOG" 2>&1
+PATCH_E=$(git rev-parse HEAD)
+log_cmd "$INJECT_CMD" "$TARGET_E" "$PATCH_E" --is-empty
+NEW_TARGET=$(git log master -1 --format="%H" --grep="Empty Target")
+if [ -n "$NEW_TARGET" ]; then
+    pass "Test 22"
+else
+    fail "Test 22" "Failed to inject empty patch into empty target"
+fi
+teardown_test
+log_end
+
+
+# 23. Intense Mid-Rebase Safety Check
+log_test "23. Intense Mid-Rebase Safety Check"
+setup_test
+git checkout master >> "$LOG" 2>&1
+GIT_SEQUENCE_EDITOR="sed -i '1s/^pick/edit/'" git rebase -i HEAD~2 >> "$LOG" 2>&1
+TARGET_R=$(git rev-parse HEAD)
+log_cmd "$INJECT_CMD" "$TARGET_R" HEAD~1
+if grep -q "already in progress" "$LOG"; then
+    git rebase --abort >> "$LOG" 2>&1
+    pass "Test 23"
+else
+    git rebase --abort >> "$LOG" 2>&1
+    fail "Test 23" "Did not gracefully fail when native rebase is in progress"
+fi
+teardown_test
+log_end
+
 if [ "$FAILED_TESTS" -gt 0 ]; then
     echo -e "\nEvaluation complete with $FAILED_TESTS failures. Check test/SUMMARY_${DATETIME}.md and test/REPORT_${DATETIME}.md for details."
     exit 1
