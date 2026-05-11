@@ -631,16 +631,16 @@ if [ "$use_working_tree" = true ] || [ "$use_staged" = true ] || [ "$use_file" =
     git rev-parse HEAD > "$STATE_DIR/INDEX_HEAD"
 fi
 
-if [ $(git rev-parse HEAD) = "$target" ]; then
-    printf "Error: Cannot inject into the same commit.\n"
-    exit 1
-fi
-
 # Hash of the <patch> commit
 if patch=$(git rev-parse --verify "$patch" 2>/dev/null); then
     echo "$patch" > "$STATE_DIR/PATCH"
 else
     printf "Error: Invalid patch %s.\n" "$patch"; exit 1
+fi
+
+if [ "$target" = "$patch" ]; then
+    printf "Error: Cannot inject into the same commit.\n"
+    exit 1
 fi
 
 if ! git merge-base --is-ancestor "$target" "$target_branch" >/dev/null 2>&1; then
