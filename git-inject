@@ -416,7 +416,7 @@ if [ "$use_working_tree" = true ]; then
         printf -- "Error: Cannot copy from working tree.\n"
         exit 1
     fi
-    if [ -n "$patch" ]; then
+    if [ -n "$patch" ] && [ "$patch" != "HEAD" ]; then
         printf "Using all changes in the working tree. Patch will be reset to head to HEAD.\n"
         printf "Verify arguments and run the command again.\n"
         exit 1
@@ -427,7 +427,7 @@ if [ "$use_staged" = true ]; then
     if [ "$use_copy" = true ]; then
         printf "Error: Cannot copy from index. Please commit your changes before copying."
     fi
-    if [ -n "$patch" ]; then
+    if [ -n "$patch" ] && [ "$patch" != "HEAD" ]; then
         printf "Using staged changes. Patch will be reset to head to HEAD.\n"
         printf "Verify arguments and run the command again.\n"
         exit 1
