@@ -3,7 +3,7 @@
 # git-inject: Merge a newer commit into an older commit
 # Usage: git inject <target> [<patch>] [--copy] [--branch <branch>]
 #        git inject [<patch>] --into <target> [--copy] [--branch <branch>]
-#        git inject [--working-tree | --staged] <target> [--branch <branch>]
+#        git inject [--working-tree | --staged | --file <file>...] <target> [--branch <branch>]
 #        git inject (--continue | --abort | --revert | --clear)
 
 # Author:  Clitson Belleau <dev@clitson.nl>
@@ -45,12 +45,10 @@ usage() {
     cat << EOF
 Usage: git inject <target> [<patch>]
    or: git inject [<patch>] --into <target>
+   or: git inject [--working-tree | --staged | --file <file>...] <target>
    or: git inject (--continue | --abort)
 
-       <patch> is an optional requirement.
-
-       If <patch> is not specified, HEAD will be used as
-       the value of <patch>.
+       <patch> is an optional requirement (defaults to HEAD).
 
        Run 'git help inject' to view the manual.
 EOF
@@ -85,6 +83,7 @@ inject_cleanup() {
     # Load persisted flags
     [ -f "$STATE_DIR/use_working_tree" ] && use_working_tree=true
     [ -f "$STATE_DIR/use_staged" ] && use_staged=true
+    [ -f "$STATE_DIR/use_file" ] && use_file=true
 
     # Return to the invocation branch before popping stash
     if [ -f "$STATE_DIR/ORIG_BRANCH" ]; then
@@ -110,7 +109,7 @@ inject_cleanup() {
     fi
 
     if [ -f "$STATE_DIR/stash" ]; then
-        if [ "$use_working_tree" = true ]; then
+        if [ "$use_working_tree" = true ] && [ "$use_file" != true ]; then
             git stash drop --quiet
         else
             git stash pop --quiet
@@ -352,9 +351,11 @@ use_branch=false
 use_copy=false
 use_theirs=false
 use_staged=false
+use_file=false
 is_empty_commit=false
 into_target=""
 positional_args=()
+inject_files=()
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -378,6 +379,34 @@ while [[ $# -gt 0 ]]; do
         --into)
             into_target="$2"
             shift 2
+            ;;
+        --file)
+            use_file=true
+            shift
+            missing_files=()
+            while [[ $# -gt 0 ]]; do
+                if [ "$1" = "--" ]; then
+                    shift
+                    break
+                fi
+                if [ ! -e "$1" ]; then
+                    missing_files+=("$1")
+                else
+                    inject_files+=("$1")
+                fi
+                shift
+            done
+            if [ ${#inject_files[@]} -eq 0 ] && [ ${#missing_files[@]} -eq 0 ]; then
+                printf "Error: '--file' requires at least one file or directory.\n"
+                exit 1
+            fi
+            if [ ${#missing_files[@]} -gt 0 ]; then
+                printf "Error: The following files or directories do not exist:\n"
+                for missing_file in "${missing_files[@]}"; do
+                    printf "  %s\n" "$missing_file"
+                done
+                exit 1
+            fi
             ;;
         --clear)
             printf "Error: Invalid use of '--clear'.\n"
@@ -423,12 +452,38 @@ else
     fi
 fi
 
-if [ "$use_working_tree" = true ]; then
+if [ "$use_file" = true ]; then
+    if [ -n "$patch" ] && [ "$patch" != "HEAD" ]; then
+        printf "Error: '--file' cannot be used with an explicit <patch>.\n"
+        exit 1
+    fi
+    if [ "$use_working_tree" = true ] || [ "$use_staged" = true ]; then
+        printf "Error: '--file' cannot be used with '--working-tree' or '--staged'.\n"
+        exit 1
+    fi
+
+    # Check for unchanged files before any state changes
+    unchanged_files=()
+    for file in "${inject_files[@]}"; do
+        if git diff HEAD --quiet -- "$file"; then
+            unchanged_files+=("$file")
+        fi
+    done
+    if [ ${#unchanged_files[@]} -gt 0 ]; then
+        printf "Error: The following files or directories have no changes:\n"
+        for file in "${unchanged_files[@]}"; do
+            printf "  %s\n" "$file"
+        done
+        exit 1
+    fi
+fi
+
+if [ "$use_working_tree" = true ] || [ "$use_file" = true ]; then
     if [ "$use_copy" = true ]; then
         printf -- "Error: Cannot copy from working tree.\n"
         exit 1
     fi
-    if [ -n "$patch" ] && [ "$patch" != "HEAD" ]; then
+    if [ -n "$patch" ] && [ "$patch" != "HEAD" ] && [ "$use_file" = false ]; then
         printf "Using all changes in the working tree. Patch will be reset to head to HEAD.\n"
         printf "Verify arguments and run the command again.\n"
         exit 1
@@ -452,7 +507,7 @@ if [ -n "$target" ] && [ -z "$patch" ]; then
 fi
 
 if [ -z "$target" ] && [ -z "$patch" ]; then
-    if [ "$use_working_tree" = true ] || [ "$use_staged" = true ]; then
+    if [ "$use_working_tree" = true ] || [ "$use_staged" = true ] || [ "$use_file" = true ]; then
         target="HEAD"
         patch="HEAD"
     else
@@ -482,6 +537,13 @@ origin=$(<"$STATE_DIR/ORIG_BRANCH")
 touch "$STATE_DIR/TARGET_BRANCH"
 touch "$STATE_DIR/INDEX_HEAD"
 
+[ "$use_theirs" = true ] && touch "$STATE_DIR/theirs"
+[ "$use_copy" = true ] && touch "$STATE_DIR/copy"
+[ "$use_working_tree" = true ] && touch "$STATE_DIR/use_working_tree"
+[ "$use_staged" = true ] && touch "$STATE_DIR/use_staged"
+[ "$use_file" = true ] && touch "$STATE_DIR/use_file"
+[ "$is_empty_commit" = true ] && touch "$STATE_DIR/is_empty_commit"
+
 # Determine target branch
 if [ -n "$target_branch" ]; then
     if ! git show-ref --verify --quiet "refs/heads/$target_branch"; then
@@ -510,7 +572,7 @@ else
     printf "Error: Invalid target %s.\n" "$target"; exit 1
 fi
 
-if [ "$use_working_tree" = true ] || [ "$use_staged" = true ]; then
+if [ "$use_working_tree" = true ] || [ "$use_staged" = true ] || [ "$use_file" = true ]; then
     if [ "$use_staged" = true ]; then
         if git diff-index --cached --quiet HEAD --; then
             printf "Error: No staged changes to inject.\n"
@@ -519,17 +581,29 @@ if [ "$use_working_tree" = true ] || [ "$use_staged" = true ]; then
         ___DISPLAY_STATUS___
     fi
 
-    if [ "$use_working_tree" = true ]; then
-        if [ -z "$(git status --porcelain)" ]; then
+    if [ "$use_working_tree" = true ] || [ "$use_file" = true ]; then
+        if [ "$use_working_tree" = true ] && [ -z "$(git status --porcelain)" ]; then
             printf "Error: No working directory changes to inject.\n"
             exit 1
         else
             inject_autostash
             git stash apply --quiet
-            ___DISPLAY_STATUS___
+            if [ "$use_working_tree" = true ]; then
+                ___DISPLAY_STATUS___
+            fi
         fi
-        git add -A
-        printf "Indexed working tree changes for injection.\n"
+
+        if [ "$use_file" = true ]; then
+            git reset HEAD --quiet
+            git add -- "${inject_files[@]}"
+            printf "Indexed specified files for injection:\n"
+            for file in "${inject_files[@]}"; do
+                printf "  %s\n" "$file"
+            done
+        else
+            git add -A
+            printf "Indexed working tree changes for injection.\n"
+        fi
     fi
 
     if [ $(git rev-parse HEAD) = "$target" ]; then
@@ -579,12 +653,6 @@ if [ "$use_branch" = false ]; then
         exit 1
     fi
 fi
-
-[ "$use_theirs" = true ] && touch "$STATE_DIR/theirs"
-[ "$use_copy" = true ] && touch "$STATE_DIR/copy"
-[ "$use_working_tree" = true ] && touch "$STATE_DIR/use_working_tree"
-[ "$use_staged" = true ] && touch "$STATE_DIR/use_staged"
-[ "$is_empty_commit" = true ] && touch "$STATE_DIR/is_empty_commit"
 
 if [ "$use_working_tree" = false ]; then
     inject_autostash
