@@ -466,7 +466,7 @@ if [ "$use_file" = true ]; then
     # Check for unchanged files before any state changes
     unchanged_files=()
     for file in "${inject_files[@]}"; do
-        if git diff HEAD --quiet -- "$file"; then
+        if [ -z "$(git status --porcelain -- "$file")" ]; then
             unchanged_files+=("$file")
         fi
     done
