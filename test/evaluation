@@ -452,6 +452,86 @@ fi
 teardown_test
 log_end
 
+# 16. Intense --into flag combinations
+log_test "16. Intense --into flag combinations"
+setup_test
+git checkout master >> "$LOG" 2>&1
+TARGET=$(git log --all --format="%H" --grep="master: commit 2")
+PATCH=$(git log --all --format="%H" --grep="master: commit 5")
+# Test <patch> --into <target>
+log_cmd "$INJECT_CMD" "$PATCH" --into "$TARGET"
+NEW_TARGET=$(git log master -1 --format="%H" --grep="master: commit 2")
+if git show "$NEW_TARGET" --name-only | grep -q "master_5"; then
+    pass "Test 16"
+else
+    fail "Test 16" "--into parsing failed with <patch> --into <target>"
+fi
+teardown_test
+log_end
+
+
+# 17. Intense --file flag (selective working tree injection)
+log_test "17. Intense --file flag (selective working tree injection)"
+setup_test
+TARGET=$(git log --all --format="%H" --grep="master: commit 2")
+git checkout master >> "$LOG" 2>&1
+echo "inject_me" > inject_file.txt
+echo "leave_me" > leave_file.txt
+git add inject_file.txt leave_file.txt >> "$LOG" 2>&1
+log_cmd "$INJECT_CMD" "$TARGET" --file inject_file.txt
+NEW_TARGET=$(git log master -1 --format="%H" --grep="master: commit 2")
+if git show "$NEW_TARGET" | grep -q "inject_me" && ! git show "$NEW_TARGET" | grep -q "leave_me"; then
+    if [ -f "leave_file.txt" ] && grep -q "leave_me" leave_file.txt; then
+        pass "Test 17"
+    else
+        fail "Test 17" "Uninjected file changes were lost from working tree"
+    fi
+else
+    fail "Test 17" "Selective file injection failed"
+fi
+teardown_test
+log_end
+
+
+# 18. Intense --file flag validation
+log_test "18. Intense --file flag validation"
+setup_test
+TARGET=$(git log --all --format="%H" --grep="master: commit 2")
+git checkout master >> "$LOG" 2>&1
+echo "test" > inject_file.txt
+git add inject_file.txt >> "$LOG" 2>&1
+log_cmd "$INJECT_CMD" "$TARGET" HEAD~1 --file inject_file.txt
+if grep -q "cannot be used with an explicit <patch>" "$LOG"; then
+    log_cmd "$INJECT_CMD" "$TARGET" --file missing_file.txt
+    if grep -q "do not exist" "$LOG"; then
+        pass "Test 18"
+    else
+        fail "Test 18" "Failed to catch missing file error"
+    fi
+else
+    fail "Test 18" "Failed to catch explicit patch error"
+fi
+teardown_test
+log_end
+
+
+# 19. Intense --file sentinel (-- )
+log_test "19. Intense --file sentinel (-- )"
+setup_test
+TARGET=$(git log --all --format="%H" --grep="master: commit 2")
+git checkout master >> "$LOG" 2>&1
+echo "inject_me" > inject_file.txt
+git add inject_file.txt >> "$LOG" 2>&1
+log_cmd "$INJECT_CMD" --file inject_file.txt -- --into "$TARGET"
+NEW_TARGET=$(git log master -1 --format="%H" --grep="master: commit 2")
+if git show "$NEW_TARGET" | grep -q "inject_me"; then
+    pass "Test 19"
+else
+    fail "Test 19" "Sentinel parsing failed to stop file consumption"
+fi
+teardown_test
+log_end
+
 if [ "$FAILED_TESTS" -gt 0 ]; then
     echo -e "\nEvaluation complete with $FAILED_TESTS failures. Check test/SUMMARY_${DATETIME}.md and test/REPORT_${DATETIME}.md for details."
     exit 1
