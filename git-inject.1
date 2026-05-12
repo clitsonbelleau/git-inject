@@ -1,0 +1,914 @@
+'\" t
+.\"     Title: git-inject
+.\"    Author: Clitson Belleau
+.\" Generator: Asciidoctor 2.0.26
+.\"      Date: 2026-05-12
+.\"    Manual: Git Manual
+.\"    Source: Git
+.\"  Language: English
+.\"
+.TH "GIT\-INJECT" "1" "2026-05-12" "Git" "Git Manual"
+.ie \n(.g .ds Aq \(aq
+.el       .ds Aq '
+.ss \n[.ss] 0
+.nh
+.ad l
+.de URL
+\fI\\$2\fP <\\$1>\\$3
+..
+.als MTO URL
+.if \n[.g] \{\
+.  mso www.tmac
+.  am URL
+.    ad l
+.  .
+.  am MTO
+.    ad l
+.  .
+.  LINKSTYLE blue R < >
+.\}
+.SH "NAME"
+git-inject \- Merge changes into an older commit
+.SH "SYNOPSIS"
+.sp
+.nf
+\fIgit inject\fP <target> [<patch>]
+\fIgit inject\fP [<target>] (\-\-working\-tree | \-\-staged)
+\fIgit inject\fP [<target>] \-\-file <file>.\|.\|.
+\fIgit inject\fP (\-\-continue | \-\-abort | \-\-revert | \-\-clear)
+.fi
+.br
+.SH "DESCRIPTION"
+.sp
+\f(CRgit inject\fP performs an automatic \f(CRgit rebase\fP operation to remove the patch commit from the history on the current branch, then apply the patch diffs to the target commit.
+Any changes in the current branch that are not committed to history are saved to a temporary area (unless \f(CR\-\-working\-tree\fP or \f(CR\-\-staged\fP option is supplied to the command) and restored upon successful completion of the injection process.
+.sp
+\f(CRgit\-inject\fP is best suited for shallow fixes and patchwork in commits on local repositories and personal branches where the others are not basing their work and quick cleaning of commits in the git tree before pushing upstream.
+.sp
+A target commit is either supplied or assumed.
+If only \f(CR<target>\fP is specified, the current \f(CRHEAD\fP commit is used as the value of the patch.
+.sp
+If \f(CR\-\-working\-tree\fP is supplied and \f(CR<target>\fP is not specified, the value of the target will be assumed to be \f(CRHEAD\fP and the diffs will be injected into the most recent commit of the current branch.
+.sp
+It is possible that a merge failure will prevent this process from being completely automatic.
+You will have to resolve any such merge failure and run \f(CRgit inject \-\-continue\fP.
+.sp
+To check out the original \f(CRHEAD\fP and remove the \f(CR.git/INJECT_STATE/\fP working files, use the command \f(CRgit inject \-\-abort\fP instead.
+.SS "Basic Behavior"
+.sp
+Assume that the following history exists on the current branch.
+.sp
+.if n .RS 4
+.nf
+.fam C
+    A\-\-\-B\-\-\-C\-\-\-D\-\-\-E\-\-\-F\&  HEAD
+.fam
+.fi
+.if n .RE
+.sp
+Suppose commit \f(CRE\fP contains a fix for a typo introduced in commit \f(CRB\fP:
+.sp
+.if n .RS 4
+.nf
+.fam C
+    A\-\-\-B\-\-\-C\-\-\-D\-\-\-E\-\-\-F\&  HEAD
+        ^\&           ^
+      target\&      patch
+.fam
+.fi
+.if n .RE
+.sp
+To merge \f(CRE\fP into \f(CRB\fP, the result of the following command:
+.sp
+.if n .RS 4
+.nf
+.fam C
+git inject B E
+.fam
+.fi
+.if n .RE
+.sp
+would be:
+.sp
+.if n .RS 4
+.nf
+.fam C
+    A\-\-\-B\*(Aq\-\-\-C\*(Aq\-\-\-D\*(Aq\-\-\-F\*(Aq\&  HEAD
+.fam
+.fi
+.if n .RE
+.sp
+\f(CRB\*(Aq\fP now contains the combined changes of \f(CRB\fP and \f(CRE\fP.
+If there are no conflicts, the other commits remain unaffected.
+.SS "Injecting HEAD"
+.sp
+Let\(cqs assume that the commit with the patch changes are currently at \f(CRHEAD\fP, and you want to merge those changes into commit \f(CRB\fP:
+.sp
+.if n .RS 4
+.nf
+.fam C
+    A\-\-\-B\-\-\-C\-\-\-D\-\-\-E\-\-\-F\&  HEAD
+        ^
+      target
+.fam
+.fi
+.if n .RE
+.sp
+We can do this using either of the following commands:
+.sp
+.if n .RS 4
+.nf
+.fam C
+git inject B
+git inject \-\-into B
+.fam
+.fi
+.if n .RE
+.sp
+which will result in:
+.sp
+.if n .RS 4
+.nf
+.fam C
+    A\-\-\-B\*(Aq\-\-\-C\*(Aq\-\-\-D\*(Aq\-\-\-E\*(Aq\&  HEAD
+        ^
+      target
+.fam
+.fi
+.if n .RE
+.if n .sp
+.RS 4
+.it 1 an-trap
+.nr an-no-space-flag 1
+.nr an-break-flag 1
+.br
+.ps +1
+.B Note
+.ps -1
+.br
+.sp
+\f(CR\-\-into\fP does not add any extra functionality. It merely exists for readability.
+.sp .5v
+.RE
+.SS "Cross\-branch Injection (Experimental)"
+.sp
+There are two methods to inject changes into other branches:
+a regular injection, where the patch commit will be removed from history and merged into the target commit on the specified branch; and
+a direct copy of the patch commit changes, where the specified patch commit will not be removed but instead have the diffs copied into the target commit.
+.sp
+Here\(cqs how you would inject changes into a target commit on a different branch.
+.sp
+First let\(cqs assume your topic is based on branch \f(CRmaster\fP.
+.sp
+.if n .RS 4
+.nf
+.fam C
+    A\-\-\-B\-\-\-C\-\-\-D\-\-\-E\&  master
+             \(rs
+              A\-\-\-B\-\-\-C\&  topic
+.fam
+.fi
+.if n .RE
+.SS "Normal injection"
+.sp
+Suppose you want to inject the last commit of the topic branch into commit \f(CRC\fP on the \f(CRmaster\fP branch without checking out \f(CRmaster\fP.
+.sp
+.if n .RS 4
+.nf
+.fam C
+    A\-\-\-B\-\-\-C\-\-\-D\-\-\-E\&  master
+             \(rs
+              A\-\-\-B\-\-\-C\&  topic
+                      ^
+                    target
+.fam
+.fi
+.if n .RE
+.sp
+You can do this using:
+.sp
+.if n .RS 4
+.nf
+.fam C
+git inject C topic \-\-branch master
+.fam
+.fi
+.if n .RE
+.sp
+\f(CRgit inject\fP first performs a switch to the \f(CRmaster\fP branch, performs the history rewrite, and results in:
+.sp
+.if n .RS 4
+.nf
+.fam C
+    A\-\-\-B\-\-\-C\*(Aq\-\-\-D\*(Aq\-\-\-E\*(Aq\&  master
+             \(rs
+              A\-\-\-B\-\-\-C\&  topic
+.fam
+.fi
+.if n .RE
+.SS "Copying changes to a specified branch"
+.sp
+Suppose you want to copy the changes of commit \f(CRD\fP on the \f(CRmaster\fP branch to commit \f(CRB\fP on \f(CRtopic\fP:
+.sp
+.if n .RS 4
+.nf
+.fam C
+    A\-\-\-B\-\-\-C\-\-\-\-\-\-\-D\-\-\-E\&  HEAD\&  master
+             \(rs\&      ^
+              \(rs\&   patch
+               \(rs
+                A\-\-\-B\-\-\-C\&  topic
+                    ^
+                  target
+.fam
+.fi
+.if n .RE
+.sp
+The following command:
+.sp
+.if n .RS 4
+.nf
+.fam C
+git inject B D \-\-branch topic \-\-copy
+.fam
+.fi
+.if n .RE
+.sp
+would result in:
+.sp
+.if n .RS 4
+.nf
+.fam C
+    A\-\-\-B\-\-\-C\-\-\-D\-\-\-E\&  master
+             \(rs
+              A\-\-\-B\*(Aq\-\-\-C\*(Aq\&  topic
+.fam
+.fi
+.if n .RE
+.sp
+\f(CRB\*(Aq\fP now contains the combined changes of \f(CRB\fP and \f(CRD\fP, while \f(CRD\fP is retained in the branch history rather than being dropped.
+.if n .sp
+.RS 4
+.it 1 an-trap
+.nr an-no-space-flag 1
+.nr an-break-flag 1
+.br
+.ps +1
+.B Note
+.ps -1
+.br
+.sp
+When \f(CR\-\-copy\fP is specified, \f(CR\-\-branch\fP must also be specified.
+Copying commits within the same branch is not permitted; and copying uncommitted changes is not possible.
+.sp .5v
+.RE
+.SS "Uncommitted Changes"
+.sp
+To inject uncommitted changes into an older commit, you use the \f(CR\-\-working\-tree\fP option to include all changes directly from your working directory, the \f(CR\-\-staged\fP option for only selected changes to be injected or \f(CR\-\-files\fP to only inject changes from specific files in the repository.
+.if n .sp
+.RS 4
+.it 1 an-trap
+.nr an-no-space-flag 1
+.nr an-break-flag 1
+.br
+.ps +1
+.B Note
+.ps -1
+.br
+.sp
+If the target commit is \f(CRHEAD\fP, \f(CRgit inject\fP will amend the commit at \f(CRHEAD\fP instead of performing a rebase operation.
+.sp .5v
+.RE
+.sp
+Assume the following history, and you have uncommitted changes in your working directory:
+.sp
+.if n .RS 4
+.nf
+.fam C
+    A\-\-\-B\-\-\-C\-\-\-D\-\-\-E HEAD\&  +\&  M/A/D/??\&  (Uncommitted changes)
+            ^
+          target
+.fam
+.fi
+.if n .RE
+.SS "Using staged changes"
+.sp
+Running either of the following commands:
+.sp
+.if n .RS 4
+.nf
+.fam C
+git inject \-\-staged C
+git inject \-s C
+.fam
+.fi
+.if n .RE
+.sp
+would result in:
+.sp
+.if n .RS 4
+.nf
+.fam C
+    A\-\-\-B\-\-\-C\*(Aq\-\-\-D\*(Aq\-\-\-E\*(Aq HEAD\&  +\&  M/A/D/??\&  (Uncommitted changes)
+.fam
+.fi
+.if n .RE
+.sp
+\f(CRC\*(Aq\fP now contains the original changes of \f(CRC\fP plus the staged changes. The working tree is cleaned up automatically.
+.SS "Using the working tree (Experimental)"
+.sp
+Running either of the following commands:
+.sp
+.if n .RS 4
+.nf
+.fam C
+git inject \-\-working\-tree C
+git inject \-w C
+.fam
+.fi
+.if n .RE
+.sp
+would result in:
+.sp
+.if n .RS 4
+.nf
+.fam C
+    A\-\-\-B\-\-\-C\*(Aq\-\-\-D\*(Aq\-\-\-E\*(Aq\&  HEAD
+.fam
+.fi
+.if n .RE
+.sp
+\f(CRC\*(Aq\fP now contains the original changes of \f(CRC\fP plus the uncommitted changes. The working tree is cleaned up automatically.
+.if n .sp
+.RS 4
+.it 1 an-trap
+.nr an-no-space-flag 1
+.nr an-break-flag 1
+.br
+.ps +1
+.B Caution
+.ps -1
+.br
+.sp
+\f(CR\-\-working\-tree\fP will commit \fBeverything\fP in your current git repository.
+Understand the risks before using this option.
+If unsure, add your changes to the index and use \f(CR\-\-staged\fP instead.
+.sp .5v
+.RE
+.SS "Using specific files"
+.sp
+If you want to inject only specific files from your working tree while preserving other uncommitted changes, use the \f(CR\-\-file\fP option.
+.sp
+.if n .RS 4
+.nf
+.fam C
+git inject fe8fd5d \-\-file file1.txt file2.txt
+.fam
+.fi
+.if n .RE
+.SS "Root Commit Injection (Experimental)"
+.sp
+\f(CRgit\-inject\fP handles the special case of injecting changes into the very first commit of a repository (the root commit).
+.sp
+.if n .RS 4
+.nf
+.fam C
+    R\-\-\-A\-\-\-B\-\-\-C\&  HEAD
+    ^\&       ^
+  target\&  patch
+.fam
+.fi
+.if n .RE
+.sp
+Running the command
+.sp
+.if n .RS 4
+.nf
+.fam C
+git inject R B
+.fam
+.fi
+.if n .RE
+.sp
+results in:
+.sp
+.if n .RS 4
+.nf
+.fam C
+    R\*(Aq\-\-\-A\*(Aq\-\-\-C\*(Aq\&  HEAD
+.fam
+.fi
+.if n .RE
+.sp
+Where \f(CRR\*(Aq\fP is the new root commit containing the original \f(CRR\fP plus the changes from \f(CRB\fP.
+.SS "Injecting into empty commits"
+.sp
+Suppose you have a history that looks like this:
+.sp
+.if n .RS 4
+.nf
+.fam C
+    A\-\-\-B\-\-\-Z\-\-\-C\&  HEAD
+            ^
+          target (fix: a minor bug)
+.fam
+.fi
+.if n .RE
+.sp
+where \f(CRZ\fP is an empty commit (or placeholder) for unfinished fixes that would be split while working on your current feature.
+.sp
+After the fix has been confirmed to be working correctly with your feature, you can inject the changes using either one of the following commands based on your workflow:
+.sp
+.if n .RS 4
+.nf
+.fam C
+git inject \-w Z \-\-is\-empty
+git inject \-s Z \-\-is\-empty
+git inject \-\-file source.c \-\- \-\-into Z \-\-is\-empty
+.fam
+.fi
+.if n .RE
+.if n .sp
+.RS 4
+.it 1 an-trap
+.nr an-no-space-flag 1
+.nr an-break-flag 1
+.br
+.ps +1
+.B Note
+.ps -1
+.br
+.sp
+\f(CR\-\-is\-empty\fP is required if the commit was originally empty before the injection.
+.sp .5v
+.RE
+.sp
+After injection, the result would be:
+.sp
+.if n .RS 4
+.nf
+.fam C
+    A\-\-\-B\-\-\-Z\*(Aq\-\-\-C\*(Aq\&  HEAD
+.fam
+.fi
+.if n .RE
+.SS "Conflict Resolution"
+.sp
+In case of conflict, \f(CRgit inject\fP works in the same as \f(CRgit rebase\fP and will stop at the first problematic commit and leave conflict markers in the tree (see \c
+.URL "git\-rebase.html" "git\-rebase(1)" ")."
+.sp
+After resolving the conflict manually and updating the index with the desired resolution, you can continue the injection process with
+.sp
+.if n .RS 4
+.nf
+.fam C
+git inject \-\-continue
+.fam
+.fi
+.if n .RE
+.sp
+Alternatively, you can stop the \f(CRgit inject\fP with
+.sp
+.if n .RS 4
+.nf
+.fam C
+git inject \-\-abort
+.fam
+.fi
+.if n .RE
+.sp
+If the injection was flawed or you want to completely undo the injection, you can revert the injection with
+.sp
+.if n .RS 4
+.nf
+.fam C
+git inject \-\-revert
+.fam
+.fi
+.if n .RE
+.SH "MODE OPTIONS"
+.sp
+\-\-continue
+.RS 4
+Resume the injection process after resolving merge conflicts.
+Use this instead of native git continue commands.
+.RE
+.sp
+\-\-abort
+.RS 4
+Abort the inject operation and reset \f(CRHEAD\fP to the original branch and restores any stashed changes.
+Use this instead of native git abort commands.
+.RE
+.sp
+\-\-clear
+.RS 4
+Clean up the \f(CRgit\-inject\fP working files (see FILES below).
+If an injection is manually aborted using native git commands (e.g., \f(CRgit rebase \-\-abort\fP) outside of \f(CRgit\-inject\fP, this may leave behind state tracking files.
+.RE
+.SH "OPTIONS"
+.sp
+<target>
+.RS 4
+The older commit that receives the changes.
+This commit must be a direct ancestor of the \f(CR<patch>\fP commit.
+.RE
+.sp
+<patch>
+.RS 4
+The newer commit containing the changes to merge.
+.sp
+If the patch commit is on the same branch where the injection was started, the commit is removed from the branch history during injection.
+.RE
+.sp
+\-s, \-\-staged
+.RS 4
+Inject all changes in the index (staging area) into the specified target.
+.sp
+See also INCOMPATIBLE OPTIONS below.
+.RE
+.sp
+\-\-is\-empty
+.RS 4
+Allow the creation of an empty commit if the patch contains no changes or if the changes are already present in the target history.
+.RE
+.sp
+\-\-into <target>
+.RS 4
+Syntactic sugar for positional placement.
+Inject the patch commit into the specified target.
+Does not alter script operation.
+.RE
+.sp
+\-\-copy
+.RS 4
+Copy diff changes from one commit to another.
+Commits copied are not deleted.
+.sp
+See also INCOMPATIBLE OPTIONS and BUGS below.
+.RE
+.SH "EXPERIMENTAL OPTIONS"
+.sp
+\-w, \-\-working\-tree
+.RS 4
+Inject all changes in the working tree into the specified target.
+These are uncommitted changes and will not return to the staging area when \f(CRgit inject \-\-revert\fP is used.
+.sp
+See also INCOMPATIBLE OPTIONS below.
+.RE
+.sp
+\-b, \-\-branch <branch>
+.RS 4
+Perform the injection on the specified branch instead of the current one.
+.sp
+See also BUGS below.
+.RE
+.sp
+\-\-theirs
+.RS 4
+Resolve merge conflicts by favoring the changes from the newer patch commit.
+This applies to internal rebase and cherry\-pick operations.
+If you expect conflicts and want the newer patch commit\(cqs changes to automatically overwrite the older target\(cqs changes, you can pass the \f(CR\-\-theirs\fP option.
+This applies the \f(CR\-X theirs\fP merge strategy and bypasses manual conflict resolution for those files.
+.RE
+.sp
+\-\-file <file>.\|.\|.
+.RS 4
+Inject changes from specific files or directories into the target.
+This option cannot be used with \f(CR\-\-working\-tree\fP, \f(CR\-\-staged\fP, or an explicit \f(CR<patch>\fP.
+.sp
+To add more options after the file list is concluded, you must use the \f(CR\-\-\fP operator to signify the end of the list. An example is provided below.
+.sp
+.if n .RS 4
+.nf
+.fam C
+git inject \-\-file gesture.c include/ \-\- \-\-into feature/gesture
+.fam
+.fi
+.if n .RE
+.sp
+See also INCOMPATIBLE OPTIONS below.
+.RE
+.sp
+\-\-revert
+.RS 4
+Reset \f(CRHEAD\fP to the original branch and exact state prior to the last successful or failed injection.
+This process can only be done once and for the most recent injection.
+This action will not recover uncommitted changes before the injection when using \f(CRgit inject \-\-working\-tree\fP.
+.RE
+.sp
+\-\-dry\-run
+.RS 4
+Perform the injection in an isolated shadow repository to detect conflicts without affecting the current branch.
+.RE
+.SH "INCOMPATIBLE OPTIONS"
+.sp
+The following options:
+.sp
+.RS 4
+.ie n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.  sp -1
+.  IP \(bu 2.3
+.\}
+\f(CR\-\-copy\fP
+.RE
+.sp
+.RS 4
+.ie n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.  sp -1
+.  IP \(bu 2.3
+.\}
+\f(CR<patch>\fP
+.RE
+.sp
+are incompatible with the following options:
+.sp
+.RS 4
+.ie n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.  sp -1
+.  IP \(bu 2.3
+.\}
+\f(CR\-\-working\-tree\fP
+.RE
+.sp
+.RS 4
+.ie n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.  sp -1
+.  IP \(bu 2.3
+.\}
+\f(CR\-\-staged\fP
+.RE
+.sp
+.RS 4
+.ie n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.  sp -1
+.  IP \(bu 2.3
+.\}
+\f(CR\-\-file\fP
+.RE
+.sp
+In addition, the following pairs of options are incompatible:
+.sp
+.RS 4
+.ie n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.  sp -1
+.  IP \(bu 2.3
+.\}
+\f(CR\-\-working\-tree\fP and \f(CR\-\-file\fP
+.RE
+.sp
+.RS 4
+.ie n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.  sp -1
+.  IP \(bu 2.3
+.\}
+\f(CR\-\-staged\fP and \f(CR\-\-file\fP
+.RE
+.SH "EXAMPLES"
+.sp
+Merge the current \f(CRHEAD\fP into an older commit:
+.sp
+.if n .RS 4
+.nf
+.fam C
+git inject fe8fd5d
+git inject \-\-into fe8fd5d
+git inject HEAD~3
+.fam
+.fi
+.if n .RE
+.sp
+Merge a specific commit into an older commit:
+.sp
+.if n .RS 4
+.nf
+.fam C
+git inject fe8fd5d c644e39
+git inject HEAD~7 HEAD^
+.fam
+.fi
+.if n .RE
+.sp
+Inject a patch into a different branch:
+.sp
+.if n .RS 4
+.nf
+.fam C
+git inject \-\-branch develop fe8fd5d c644e39
+.fam
+.fi
+.if n .RE
+.sp
+Merge a missing file and automatically resolve conflicts in favor of the patch:
+.sp
+.if n .RS 4
+.nf
+.fam C
+git inject fe8fd5d c644e39 \-\-theirs
+.fam
+.fi
+.if n .RE
+.sp
+Inject all changes in the working tree into an older commit:
+.sp
+.if n .RS 4
+.nf
+.fam C
+git inject \-w
+git inject \-w fe8fd5d
+.fam
+.fi
+.if n .RE
+.sp
+Inject staged changes into an older commit:
+.sp
+.if n .RS 4
+.nf
+.fam C
+git inject \-\-staged fe8fd5d
+.fam
+.fi
+.if n .RE
+.sp
+Inject specific files into an older commit:
+.sp
+.if n .RS 4
+.nf
+.fam C
+git inject HEAD~2 \-\-file src/main.c include/main.h
+.fam
+.fi
+.if n .RE
+.sp
+Resolve a conflict during injection:
+.sp
+.if n .RS 4
+.nf
+.fam C
+# Edit conflicting files; then
+git add [FILE...]
+git inject \-\-continue
+.fam
+.fi
+.if n .RE
+.SH "INJECTING MERGE COMMITS"
+.sp
+Not officially supported.
+.SH "NOTES"
+.sp
+You should understand the implications of using git inject on a repository that you share.
+See also RECOVERING FROM UPSTREAM REBASE in \c
+.URL "git\-rebase.html" "git\-rebase(1)" "."
+.sp
+\f(CRgit\-inject\fP supports injecting patches into the root commit of a repository.
+.SH "SAFEGUARDS"
+.sp
+\f(CRgit\-inject\fP safeguards to prevent data loss or repository corruption:
+.sp
+Ancestry Guard
+.RS 4
+Will refuse execution if the target commit is not an ancestor of the patch commit, or if they do not exist on the target branch.
+Traveling forward breaks the Git DAG.
+.RE
+.sp
+Stashing
+.RS 4
+Uncommitted working directory changes are automatically stashed before the operation begins and popped when the operation completes successfully or is aborted.
+.RE
+.sp
+Backup HEAD
+.RS 4
+Before any history rewriting begins, the current \f(CRHEAD\fP pointer is saved.
+If \f(CR\-\-abort\fP is triggered, the repository is hard\-reset to this exact pointer.
+.RE
+.sp
+Detached HEAD Protection
+.RS 4
+The command will refuse to run if you are not currently on a named branch.
+.RE
+.SH "FILES"
+.sp
+$GIT_DIR/INJECT_STATE/
+.RS 4
+A temporary directory created inside the \f(CR.git\fP folder while an injection is in progress.
+It stores session data including the origin branch name, target and patch hashes, and stash tracking.
+It is deleted upon completion or abortion.
+.RE
+.sp
+$GIT_DIR/INJECT_REVERT, $GIT_DIR/INJECT_BRANCH
+.RS 4
+Persistent files storing the \f(CRHEAD\fP hash from before the last injection attempt.
+This file is used by the \f(CR\-\-revert\fP command.
+.RE
+.SH "WARNINGS"
+.sp
+\f(CRgit\-inject\fP rewrites repository history.
+If the branch you are modifying has already been pushed to a remote repository, you will need to force push (\f(CRgit push \-\-force\-with\-lease\fP) after the injection is complete.
+Avoid using this command on shared public branches where other developers are actively basing their work.
+.SH "BUGS"
+.sp
+.RS 4
+.ie n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.  sp -1
+.  IP \(bu 2.3
+.\}
+If \f(CR\-\-branch\fP is specified and the patch commit is older than the target commit, the injection will proceed without error.
+.RE
+.sp
+.RS 4
+.ie n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.  sp -1
+.  IP \(bu 2.3
+.\}
+When reverting an injection which used \f(CR\-\-copy\fP, \f(CRgit\-inject\fP does not remember where the commit was copied from which can result in a broken tree when conflicting history is restored.
+.RE
+.sp
+.RS 4
+.ie n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.  sp -1
+.  IP \(bu 2.3
+.\}
+\&.\|.\|.
+.RE
+.SH "SANDBOX"
+.sp
+To create a temporary sandbox to test the command, download the repository then run
+.sp
+.if n .RS 4
+.nf
+.fam C
+chmod +x ./test/sandbox
+\&./test/sandbox setup
+.fam
+.fi
+.if n .RE
+.sp
+and navigate to the generated \f(CRgit\-inject\-sandbox/\fP folder and open the git project.
+The sandbox is crated with six branches, two of which are orphan branches and the other four are split between the orphans, two each.
+The included files are designed to be distinguishable from each other by file extension.
+.sp
+Here\(cqs what the branch tree structure would look like:
+.sp
+.if n .RS 4
+.nf
+.fam C
+    * 82f1807 (feature)\&           * 6cf071b (reference)
+    | * 6c0b3b1 (topic)\&           | * 41d729a (article)
+    | | * b4afe1c (master)\&        | | * 6316505 (docs)
+    | |/\&                          | |/
+    |/|\&                           |/|
+    * | d08a371\&                   * | 02a7b8f
+    |/\&                            |/
+    * 34252d6\&                     * b6d343a
+.fam
+.fi
+.if n .RE
+.sp
+The tree is truncated to cut down unnecessary empty space.
+.SH "SEE ALSO"
+.sp
+\c
+.URL "git\-rebase.html" "git\-rebase(1)"
+\c
+.URL "git\-cherry\-pick.html" "git\-cherry\-pick(1)"
+\c
+.URL "git\-rev\-parse.html" "git\-rev\-parse(1)"
+.URL "git\-merge\-base.html" "git\-merge\-base(1)" ""
+.SH "GIT"
+.sp
+Not part of the \c
+.URL "git.html" "git(1)" ""
+suite.
+This is a third\-party tool.
+.SH "AUTHOR"
+.sp
+Clitson Belleau
