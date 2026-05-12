@@ -276,7 +276,7 @@ acquire_lock
 case "$1" in
     --continue)
         if [ ! -d "$STATE_DIR" ]; then
-            printf "Error: No injection in progress.\n"
+            printf "No injection in progress.\n"
             exit 1
         fi
 
@@ -326,11 +326,11 @@ case "$1" in
         ;;
     --revert)
         if [ ! -f "$REVERT_HEAD" ] && [ ! -f "$REVERT_BRANCH" ]; then
-            printf "Error: No revert information found.\n"
+            printf "No revert information found.\n"
             exit 1
         fi
-        [ -f "$REVERT_HEAD" ] || { printf "Error: Missing revert HEAD.\n"; exit 1; }
-        [ -f "$REVERT_BRANCH" ] || { printf "Error: Missing revert branch.\n"; exit 1; }
+        [ -f "$REVERT_HEAD" ] || { printf "Missing revert HEAD.\n"; exit 1; }
+        [ -f "$REVERT_BRANCH" ] || { printf "Missing revert branch.\n"; exit 1; }
 
         r_head=$(<"$REVERT_HEAD")
         r_branch=$(<"$REVERT_BRANCH")
@@ -347,8 +347,8 @@ case "$1" in
         ;;
      --clear)
         if [ ! -f "$REVERT_HEAD" ] && [ ! -f "$REVERT_BRANCH" ] && [ ! -d "$STATE_DIR" ]; then
-            printf "Error: No working files found.\n"
-            exit 1
+            printf "No working files found.\n"
+            exit 0
         fi
         [ -d "$STATE_DIR" ] && rm -rf "$STATE_DIR"
         [ -f "$REVERT_HEAD" ] && rm -f "$REVERT_HEAD"
@@ -414,11 +414,11 @@ while [[ $# -gt 0 ]]; do
                 shift
             done
             if [ ${#inject_files[@]} -eq 0 ] && [ ${#missing_files[@]} -eq 0 ]; then
-                printf "Error: '--file' requires at least one file or directory.\n"
+                printf "'--file' requires at least one file or directory.\n"
                 exit 1
             fi
             if [ ${#missing_files[@]} -gt 0 ]; then
-                printf "Error: The following files or directories do not exist:\n"
+                printf "The following files or directories do not exist:\n"
                 for missing_file in "${missing_files[@]}"; do
                     printf "  %s\n" "$missing_file"
                 done
@@ -426,7 +426,7 @@ while [[ $# -gt 0 ]]; do
             fi
             ;;
         --clear)
-            printf "Error: Invalid use of '--clear'.\n"
+            printf "Invalid use of '--clear'.\n"
             exit 1
             ;;
         -s | --staged)
@@ -438,7 +438,7 @@ while [[ $# -gt 0 ]]; do
             shift
             ;;
         -*)
-            printf "Error: Unknown option %s\n" "$1"
+            printf "Unknown option %s\n" "$1"
             exit 1
             ;;
         *)
@@ -452,14 +452,14 @@ done
 if [ -n "$into_target" ]; then
     target="$into_target"
     if [ ${#positional_args[@]} -gt 1 ]; then
-        printf "Error: Too many arguments when using '--into'.\n"
+        printf "Too many arguments when using '--into'.\n"
         exit 1
     elif [ ${#positional_args[@]} -eq 1 ]; then
         patch="${positional_args[0]}"
     fi
 else
     if [ ${#positional_args[@]} -gt 2 ]; then
-        printf "Error: Too many arguments.\n"
+        printf "Too many arguments.\n"
         exit 1
     elif [ ${#positional_args[@]} -eq 2 ]; then
         target="${positional_args[0]}"
@@ -471,11 +471,11 @@ fi
 
 if [ "$use_file" = true ]; then
     if [ -n "$patch" ] && [ "$patch" != "HEAD" ]; then
-        printf "Error: '--file' cannot be used with an explicit <patch>.\n"
+        printf "'--file' cannot be used with an explicit <patch>.\n"
         exit 1
     fi
     if [ "$use_working_tree" = true ] || [ "$use_staged" = true ]; then
-        printf "Error: '--file' cannot be used with '--working-tree' or '--staged'.\n"
+        printf "'--file' cannot be used with '--working-tree' or '--staged'.\n"
         exit 1
     fi
 
@@ -487,7 +487,7 @@ if [ "$use_file" = true ]; then
         fi
     done
     if [ ${#unchanged_files[@]} -gt 0 ]; then
-        printf "Error: The following files or directories have no changes:\n"
+        printf "The following files or directories have no changes:\n"
         for file in "${unchanged_files[@]}"; do
             printf "  %s\n" "$file"
         done
@@ -497,7 +497,7 @@ fi
 
 if [ "$use_working_tree" = true ] || [ "$use_file" = true ]; then
     if [ "$use_copy" = true ]; then
-        printf -- "Error: Cannot copy from working tree.\n"
+        printf "Cannot copy from working tree.\n"
         exit 1
     fi
     if [ -n "$patch" ] && [ "$patch" != "HEAD" ] && [ "$use_file" = false ]; then
@@ -509,7 +509,7 @@ fi
 
 if [ "$use_staged" = true ]; then
     if [ "$use_copy" = true ]; then
-        printf "Error: Cannot copy from index. Please commit your changes before copying.\n"
+        printf "Cannot copy from index. Please commit your changes before copying.\n"
         exit 1
     fi
     if [ -n "$patch" ] && [ "$patch" != "HEAD" ]; then
@@ -536,17 +536,17 @@ if [ -z "$target" ] && [ -z "$patch" ]; then
 fi
 
 if [ "$use_copy" = true ] && [ "$use_branch" = false ]; then
-    printf "Error: Can only copy onto another branch.\n"
+    printf "Can only copy onto another branch.\n"
     exit 1
 fi
 
 if [ -d "$STATE_DIR" ]; then
-    printf "Error: An injection is already in progress.\nUse git inject --continue, --abort, or --clear.\n"
+    printf "An injection is already in progress.\nUse git inject --continue, --abort, or --clear.\n"
     exit 1
 fi
 
 if [ -d "$GIT_DIR/rebase-merge" ] || [ -d "$GIT_DIR/rebase-apply" ] || [ -f "$GIT_DIR/CHERRY_PICK_HEAD" ]; then
-    printf "Error: A git operation (rebase/cherry-pick/am) is already in progress.\n"
+    printf "A git operation (rebase/cherry-pick/am) is already in progress.\n"
     exit 1
 fi
 
@@ -570,7 +570,7 @@ touch "$STATE_DIR/INDEX_HEAD"
 # Determine target branch
 if [ -n "$target_branch" ]; then
     if ! git show-ref --verify --quiet "refs/heads/$target_branch"; then
-        printf "Error: Branch \"%s\" does not exist.\n" "$target_branch"
+        printf "Branch \"%s\" does not exist.\n" "$target_branch"
         exit 1
     fi
     echo "$target_branch" > "$STATE_DIR/TARGET_BRANCH"
@@ -578,7 +578,7 @@ else
     echo "$origin" > "$STATE_DIR/TARGET_BRANCH"
     target_branch=$(<"$STATE_DIR/TARGET_BRANCH")
     if [ -z "$target_branch" ]; then
-        printf "Error: You are in a detached HEAD state.\nStart git inject within a branch.\n"
+        printf "You are in a detached HEAD state.\nStart git inject within a branch.\n"
         exit 1
     fi
 fi
@@ -592,22 +592,22 @@ echo "$target_branch" > "$REVERT_BRANCH"
 if target="$(git rev-parse --verify "$target" 2>/dev/null)"; then
     echo "$target" > "$STATE_DIR/TARGET"
 else
-    printf "Error: Invalid target %s.\n" "$target"; exit 1
+    printf "Invalid target %s.\n" "$target"; exit 1
 fi
 
 if [ "$use_working_tree" = true ] || [ "$use_staged" = true ] || [ "$use_file" = true ]; then
     if [ "$use_staged" = true ]; then
         if git diff-index --cached --quiet HEAD --; then
-            printf "Error: No staged changes to inject.\n"
-            exit 1
+            printf "No staged changes to inject.\n"
+            exit 0
         fi
         ___DISPLAY_STATUS___
     fi
 
     if [ "$use_working_tree" = true ] || [ "$use_file" = true ]; then
         if [ "$use_working_tree" = true ] && [ -z "$(git status --porcelain)" ]; then
-            printf "Error: No working directory changes to inject.\n"
-            exit 1
+            printf "No working directory changes to inject.\n"
+            exit 0
         else
             inject_autostash
             git stash apply --quiet
@@ -636,7 +636,7 @@ if [ "$use_working_tree" = true ] || [ "$use_staged" = true ] || [ "$use_file" =
             inject_success
             exit 0
         else
-            printf "Error: Something unexpected happened.\n"
+            printf "Something unexpected happened.\n"
             exit 1
         fi
     else
@@ -652,27 +652,27 @@ fi
 if patch="$(git rev-parse --verify "$patch" 2>/dev/null)"; then
     echo "$patch" > "$STATE_DIR/PATCH"
 else
-    printf "Error: Invalid patch %s.\n" "$patch"; exit 1
+    printf "Invalid patch %s.\n" "$patch"; exit 1
 fi
 
 if [ "$target" = "$patch" ]; then
-    printf "Error: Cannot inject into the same commit.\n"
+    printf "Cannot inject into the same commit.\n"
     exit 1
 fi
 
 if ! git merge-base --is-ancestor "$target" "$target_branch" >/dev/null 2>&1; then
-    printf "Error: The target commit must exist on the branch \"%s\".\n" "$target_branch"
+    printf "The target commit must exist on the branch \"%s\".\n" "$target_branch"
     exit 1
 fi
 
 if [ "$use_branch" = false ]; then
     if ! git merge-base --is-ancestor "$target" "$patch" >/dev/null 2>&1; then
-        printf "Error: The target commit must be an ancestor of the patch commit.\nSpecify --branch if injecting to a different branch.\n"
+        printf "The target commit must be an ancestor of the patch commit.\nSpecify --branch if injecting to a different branch.\n"
         exit 1
     fi
 
     if ! git merge-base --is-ancestor "$patch" "$target_branch" >/dev/null 2>&1; then
-        printf "Error: The patch must exist on the branch history of %s.\nSpecify --branch if injecting to a different branch.\n" "$target_branch"
+        printf "The patch must exist on the branch history of %s.\nSpecify --branch if injecting to a different branch.\n" "$target_branch"
         exit 1
     fi
 fi
