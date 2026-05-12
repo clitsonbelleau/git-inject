@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 
-# git-inject: Merge a newer commit into an older commit
-# Usage: git inject <target> [<patch>] [--copy] [--branch <branch>]
-#        git inject [<patch>] --into <target> [--copy] [--branch <branch>]
-#        git inject [--working-tree | --staged | --file <file>...] <target> [--branch <branch>]
+# git-inject: Merge changes into an older commit
+# Usage: git inject <target> [<patch>]
+#        git inject [<target>] (--working-tree | --staged)
+#        git inject [<target>] --file <file>...
 #        git inject (--continue | --abort | --revert | --clear)
 
 # Author:  Clitson Belleau <dev@clitson.nl>
@@ -58,9 +58,9 @@ acquire_lock() {
 usage() {
     cat << EOF
 Usage: git inject <target> [<patch>]
-   or: git inject [<patch>] --into <target>
-   or: git inject [--working-tree | --staged | --file <file>...] <target>
-   or: git inject (--continue | --abort)
+   or: git inject [<target>] (--working-tree | --staged)
+   or: git inject [<target>] --file <file>...
+   or: git inject (--continue | --abort | --revert | --clear)
 
        <patch> is an optional requirement (defaults to HEAD).
 
