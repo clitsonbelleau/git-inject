@@ -369,35 +369,51 @@ use_theirs=false
 use_staged=false
 use_file=false
 is_empty_commit=false
+use_dry_run=false
+is_dry_run_child=false
 into_target=""
 positional_args=()
+__dry_run_flags=()
 inject_files=()
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
         -w | --working-tree)
             use_working_tree=true
+            __dry_run_flags+=("$1")
             shift
             ;;
         --theirs)
             use_theirs=true
+            __dry_run_flags+=("$1")
             shift
             ;;
         --copy | -c)
             use_copy=true
+            __dry_run_flags+=("$1")
             shift
             ;;
         -b | --branch)
             target_branch="$2"
             use_branch=true
+            __dry_run_flags+=("$1" "$2")
             shift 2
             ;;
         --into)
             into_target="$2"
             shift 2
             ;;
+        --dry-run)
+            use_dry_run=true
+            shift
+            ;;
+        --is-dry-run-child)
+            is_dry_run_child=true
+            shift
+            ;;
         --file)
             use_file=true
+            __dry_run_flags+=("$1")
             shift
             missing_files=()
             while [[ $# -gt 0 ]]; do
@@ -410,6 +426,7 @@ while [[ $# -gt 0 ]]; do
                     missing_files+=("$1")
                 else
                     inject_files+=("$1")
+                    __dry_run_flags+=("$1")
                 fi
                 shift
             done
@@ -431,10 +448,12 @@ while [[ $# -gt 0 ]]; do
             ;;
         -s | --staged)
             use_staged=true
+            __dry_run_flags+=("$1")
             shift
             ;;
         --is-empty)
             is_empty_commit=true
+            __dry_run_flags+=("$1")
             shift
             ;;
         -*)
@@ -447,6 +466,52 @@ while [[ $# -gt 0 ]]; do
             ;;
     esac
 done
+
+if [ "$use_dry_run" = true ]; then
+    if [ "$__INJECT_DRY_RUN_ACTIVE" = "true" ]; then
+        printf "Error: Nested dry-run detected.\n"
+        exit 1
+    fi
+
+    printf "Performing dry-run (simulating injection)...\n"
+    DRY_RUN_DIR=$(mktemp -d -t git-inject-dry-XXXXXX)
+    trap 'rm -rf "$DRY_RUN_DIR"; exit 1' INT TERM EXIT
+
+    # Lightweight clone
+    git clone --local --shared --quiet . "$DRY_RUN_DIR"
+
+    # Ship uncommitted changes if needed
+    if [ "$use_working_tree" = true ] || [ "$use_staged" = true ] || [ "$use_file" = true ] || [ -n "$(git status --porcelain)" ]; then
+        STASH_HASH=$(git stash create "DRY_RUN_TEMP")
+        if [ -n "$STASH_HASH" ]; then
+            (cd "$DRY_RUN_DIR" && git fetch .. "$STASH_HASH" --quiet && git stash apply "$STASH_HASH" --quiet)
+        fi
+    fi
+
+    # Isolated execution
+    (
+        export __INJECT_DRY_RUN_ACTIVE=true
+        unset GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE
+        cd "$DRY_RUN_DIR" || exit 1
+        bash "$0" "${positional_args[@]}" --is-dry-run-child "${__dry_run_flags[@]}"
+    )
+    RESULT=$?
+
+    trap - INT TERM EXIT
+    rm -rf "$DRY_RUN_DIR"
+
+    if [ $RESULT -eq 0 ]; then
+        printf "\nDRY-RUN SUCCESSFUL: The injection would complete without conflicts.\n"
+    else
+        printf "\nDRY-RUN FAILED: The injection would encounter conflicts or errors.\n"
+    fi
+    exit $RESULT
+fi
+
+if [ "$is_dry_run_child" = true ]; then
+    # Suppress most output in child dry-run except errors
+    exec >/dev/null
+fi
 
 # Resolve target and patch based on positional arguments and --into
 if [ -n "$into_target" ]; then
