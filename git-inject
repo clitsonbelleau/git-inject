@@ -206,7 +206,7 @@ start_injection() {
     else
         rebase_start="--root"
     fi
-    if ! git rebase --rebase-merges -i "$options" "$rebase_start" "$target_branch" 2>/dev/null; then
+    if ! git rebase --rebase-merges -i $options "$rebase_start" "$target_branch" 2>/dev/null; then
         printf "\nCONFLICT during rebase initialization!\nResolve, then run: git inject --continue\n"
         CLEANUP_ON_EXIT=false
         exit 1
@@ -227,7 +227,7 @@ process_rebase_step() {
     if [ "$(parse "$target")" = "$current_head" ]; then
         printf "Injecting %s -> %s...\n" "$s_patch" "$s_target"
         echo "INJECTING" > "$STATE_DIR/STATUS"
-        if git cherry-pick "$options" --no-commit "$patch"; then
+        if git cherry-pick $options --no-commit "$patch"; then
             finalize_injection
         else
             printf "\nCONFLICT during patch injection!\nResolve, then run: git inject --continue\n"
