@@ -140,6 +140,10 @@ parse() {
     fi
 }
 
+verify() {
+  parse --verify "$1"
+}
+
 inject_success() {
     target_old="$(cat "$STATE_DIR/TARGET" 2>/dev/null)"
     target_new="$(cat "$STATE_DIR/TARGET_NEW" 2>/dev/null)"
@@ -197,7 +201,7 @@ start_injection() {
 
     # If the user tries to inject changes into the very first commit of the
     # repository, $target^ will fail to resolve because it has no parent.
-    if git rev-parse --verify "$target^" >/dev/null 2>&1; then
+    if verify "$target^" >/dev/null 2>&1; then
         rebase_start="$target^"
     else
         rebase_start="--root"
@@ -288,7 +292,7 @@ case "$1" in
         target="$(<"$STATE_DIR/TARGET")"
         target_branch="$(<"$STATE_DIR/TARGET_BRANCH")"
 
-        if [ "$status" = "INJECTING" ] || git rev-parse --verify CHERRY_PICK_HEAD >/dev/null 2>&1; then
+        if [ "$status" = "INJECTING" ] || verify CHERRY_PICK_HEAD >/dev/null 2>&1; then
             printf "Finalizing injection...\n"
             git cherry-pick --quit >/dev/null 2>&1
             finalize_injection
@@ -654,7 +658,7 @@ parse "$target_branch" > "$REVERT_HEAD"
 echo "$target_branch" > "$REVERT_BRANCH"
 
 # Hash of the <target> commit
-if target="$(git rev-parse --verify "$target" 2>/dev/null)"; then
+if target="$(verify "$target" 2>/dev/null)"; then
     echo "$target" > "$STATE_DIR/TARGET"
 else
     printf "Invalid target %s.\n" "$target"; exit 1
@@ -714,7 +718,7 @@ if [ "$use_working_tree" = true ] || [ "$use_staged" = true ] || [ "$use_file" =
 fi
 
 # Hash of the <patch> commit
-if patch="$(git rev-parse --verify "$patch" 2>/dev/null)"; then
+if patch="$(verify "$patch" 2>/dev/null)"; then
     echo "$patch" > "$STATE_DIR/PATCH"
 else
     printf "Invalid patch %s.\n" "$patch"; exit 1
