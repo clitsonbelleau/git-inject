@@ -81,9 +81,9 @@ inject_autostash(){
     # Create state directory in case of using working tree or staged changes
     mkdir -p "$STATE_DIR"
 
-    old_stash="$(git rev-parse --quiet --verify refs/stash)"
+    old_stash="$(parse --quiet --verify refs/stash)"
     git stash push --include-untracked --message="INJECT: Save working tree" --quiet >/dev/null 2>&1
-    new_stash="$(git rev-parse --quiet --verify refs/stash)"
+    new_stash="$(parse --quiet --verify refs/stash)"
 
     if [ "$old_stash" != "$new_stash" ]; then
         echo "$new_stash" > "$STATE_DIR/stash"
@@ -111,7 +111,7 @@ inject_cleanup() {
     # Handle the temporary commit
     if [ -s "$STATE_DIR/INDEX_HEAD" ]; then
         patch="$(<"$STATE_DIR/PATCH")"
-        if [ "$(git rev-parse HEAD)" = "$patch" ]; then
+        if [ "$(parse HEAD)" = "$patch" ]; then
             if [ "$1" = "abort" ]; then
                 # Recover changes after abort
                 git reset HEAD^ >/dev/null 2>&1
@@ -219,8 +219,8 @@ process_rebase_step() {
     s_target="$(parse -s "$target")"
 
     # Check if we stopped at our target for editing
-    current_head="$(git rev-parse HEAD)"
-    if [ "$(git rev-parse "$target")" = "$current_head" ]; then
+    current_head="$(parse HEAD)"
+    if [ "$(parse "$target")" = "$current_head" ]; then
         printf "Injecting %s -> %s...\n" "$s_patch" "$s_target"
         echo "INJECTING" > "$STATE_DIR/STATUS"
         if git cherry-pick "$options" --no-commit "$patch"; then
@@ -252,7 +252,7 @@ finalize_injection() {
 
     if git commit --amend $([ "$is_empty_commit" = true ] && echo "--allow-empty") --reuse-message="$target" --no-verify; then
         # Capture the new target hash
-        git rev-parse HEAD > "$STATE_DIR/TARGET_NEW"
+        parse HEAD > "$STATE_DIR/TARGET_NEW"
 
         echo "REBASING" > "$STATE_DIR/STATUS"
         export_sequence_editor
@@ -618,7 +618,7 @@ fi
 # Setup State
 mkdir -p "$STATE_DIR"
 # HEAD where git-inject was invoked
-git rev-parse HEAD > "$STATE_DIR/ORIG_HEAD"
+parse HEAD > "$STATE_DIR/ORIG_HEAD"
 git branch --show-current > "$STATE_DIR/ORIG_BRANCH"
 origin=$(<"$STATE_DIR/ORIG_BRANCH")
 # Effective target branch for injection
@@ -650,7 +650,7 @@ fi
 
 # Hash of the effective target branch name and HEAD to which we reset
 # upon reverting the injection
-git rev-parse "$target_branch" > "$REVERT_HEAD"
+parse "$target_branch" > "$REVERT_HEAD"
 echo "$target_branch" > "$REVERT_BRANCH"
 
 # Hash of the <target> commit
@@ -694,10 +694,10 @@ if [ "$use_working_tree" = true ] || [ "$use_staged" = true ] || [ "$use_file" =
         fi
     fi
 
-    if [ "$(git rev-parse HEAD)" = "$target" ]; then
+    if [ "$(parse HEAD)" = "$target" ]; then
         if git commit --amend $([ "$is_empty_commit" = true ] && echo "--allow-empty") --no-edit; then
             # Capture the new target hash
-            git rev-parse HEAD > "$STATE_DIR/TARGET_NEW"
+            parse HEAD > "$STATE_DIR/TARGET_NEW"
             inject_success
             exit 0
         else
@@ -710,7 +710,7 @@ if [ "$use_working_tree" = true ] || [ "$use_staged" = true ] || [ "$use_file" =
     fi
 
     patch="HEAD"
-    git rev-parse HEAD > "$STATE_DIR/INDEX_HEAD"
+    parse HEAD > "$STATE_DIR/INDEX_HEAD"
 fi
 
 # Hash of the <patch> commit
@@ -752,6 +752,6 @@ if [ "$target_branch" != "$origin" ]; then
 fi
 
 # Hash copy of the current HEAD on target branch.
-git rev-parse HEAD > "$BACKUP_HEAD"
+parse HEAD > "$BACKUP_HEAD"
 
 start_injection
