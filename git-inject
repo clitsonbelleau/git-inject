@@ -136,12 +136,12 @@ parse() {
     if [ "$1" = "-s" ]; then
         git rev-parse --short "$2"
     else
-        git rev-parse "$1"
+        git rev-parse "$@"
     fi
 }
 
 verify() {
-  parse --verify "$1"
+  parse --verify "$@"
 }
 
 inject_success() {
