@@ -564,12 +564,12 @@ if [ "$use_file" = true ]; then
     fi
 fi
 
-if [ "$use_working_tree" = true ] || [ "$use_file" = true ]; then
+if [ "$use_working_tree" = true ]; then
     if [ "$use_copy" = true ]; then
         printf "Cannot copy from working tree.\n"
         exit 1
     fi
-    if [ -n "$patch" ] && [ "$patch" != "HEAD" ] && [ "$use_file" = false ]; then
+    if [ -n "$patch" ] && [ "$patch" != "HEAD" ]; then
         printf "Using all changes in the working tree. Patch will be reset to head to HEAD.\n"
         printf "Verify arguments and run the command again.\n"
         exit 1
@@ -673,8 +673,8 @@ if [ "$use_working_tree" = true ] || [ "$use_staged" = true ] || [ "$use_file" =
         ___DISPLAY_STATUS___
     fi
 
-    if [ "$use_working_tree" = true ] || [ "$use_file" = true ]; then
-        if [ "$use_working_tree" = true ] && [ -z "$(git status --porcelain)" ]; then
+    if [ "$use_working_tree" = true ]; then
+        if [ -z "$(git status --porcelain)" ]; then
             printf "No working directory changes to inject.\n"
             exit 0
         else
@@ -685,17 +685,17 @@ if [ "$use_working_tree" = true ] || [ "$use_staged" = true ] || [ "$use_file" =
             fi
         fi
 
-        if [ "$use_file" = true ]; then
-            git reset HEAD --quiet
-            git add -- "${inject_files[@]}"
-            printf "Indexed specified files for injection:\n"
-            for file in "${inject_files[@]}"; do
-                printf "  %s\n" "$file"
-            done
-        else
-            git add -A
-            printf "Indexed working tree changes for injection.\n"
-        fi
+        git add -A
+        printf "Indexed working tree changes for injection.\n"
+    fi
+
+    if [ "$use_file" = true ]; then
+        git reset HEAD --quiet
+        git add -- "${inject_files[@]}"
+        printf "Indexed specified files for injection:\n"
+        for file in "${inject_files[@]}"; do
+            printf "  %s\n" "$file"
+        done
     fi
 
     if [ "$(parse HEAD)" = "$target" ]; then
