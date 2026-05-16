@@ -3,5 +3,10 @@
 *.log
 *.sh
 *.bak
+
 git-inject-sandbox/
-test/*.md
+
+test/
+!test/templates/
+!test/sandbox
+!test/evaluation
