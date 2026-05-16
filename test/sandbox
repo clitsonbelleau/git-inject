@@ -75,8 +75,7 @@ setup_env() {
 
     echo ""
     echo "Test environment created: ./git-inject-sandbox/"
-    echo ""
-    git log --graph --all --oneline --decorate
+    git log --graph --all --oneline --decorate > commits.log
 }
 
 teardown_env() {
