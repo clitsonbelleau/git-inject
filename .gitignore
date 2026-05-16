@@ -3,5 +3,11 @@
 *.log
 *.sh
 *.bak
+
 git-inject-sandbox/
+
+# Evaluation test files
 test/*.md
+test/*.log
+test/eval_*/
+test/sandbox_*/
