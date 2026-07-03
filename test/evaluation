@@ -133,6 +133,10 @@ else
     fail "$test_name" "Staged changes injected improperly"
 fi
 
+# Clean up dirty tree after test 3
+git reset --hard >> "$REPORT" 2>&1
+git clean -fd >> "$REPORT" 2>&1
+
 
 # 4. Intense Conflict Generation, Switch branches midway, Continue
 test_name="4. Conflict Generation & Multi-branch Continue"
