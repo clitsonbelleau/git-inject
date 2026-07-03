@@ -71,8 +71,8 @@ cd "$SAND_DIR" || exit 1
 # 1. Intense Deep Tree Cross-Branch Copy (article to master)
 test_name="1. Deep Tree Cross-Branch Copy (article to master)"
 log_test "$test_name"
-TARGET=$(git log --all --format="%H" --grep="master: commit 3")
-PATCH=$(git log --all --format="%H" --grep="article: commit 4")
+TARGET=$(git log --all -1 --format="%H" --grep="master: commit 3")
+PATCH=$(git log --all -1 --format="%H" --grep="article: commit 4")
 # Human behavior: User is working on 'article' branch, dirty tree, decides to copy a patch to 'master'
 git checkout article >> "$REPORT" 2>&1
 echo "dirty" > human_dirty_file.txt
@@ -92,7 +92,7 @@ fi
 # 2. Intense Working Tree (-w) on docs branch
 test_name="2. Intense Working Tree (-w) on docs branch"
 log_test "$test_name"
-TARGET=$(git log --all --format="%H" --grep="docs: commit 4")
+TARGET=$(git log --all -1 --format="%H" --grep="docs: commit 4")
 git checkout docs >> "$REPORT" 2>&1
 # Human behavior: User tracks a new file, modifies existing, deletes another, and leaves one untracked
 echo "new_tracked" > new_tracked.txt
@@ -115,7 +115,7 @@ fi
 # 3. Intense Staged (-s) with conflicting unstaged changes on feature branch
 test_name="3. Intense Staged (-s) on feature branch"
 log_test "$test_name"
-TARGET=$(git log --all --format="%H" --grep="feature: commit 2")
+TARGET=$(git log --all -1 --format="%H" --grep="feature: commit 2")
 git checkout feature >> "$REPORT" 2>&1
 # Human behavior: stage part of a file, leave the rest unstaged
 echo "staged_change" > feature_1.txt
@@ -142,7 +142,7 @@ git clean -fd >> "$REPORT" 2>&1
 test_name="4. Conflict Generation & Multi-branch Continue"
 log_test "$test_name"
 git checkout reference >> "$REPORT" 2>&1
-TARGET=$(git log --all --format="%H" --grep="reference: commit 2")
+TARGET=$(git log --all -1 --format="%H" --grep="reference: commit 2")
 # Create conflict scenario on reference
 git checkout -b reference_conflict "$TARGET" >> "$REPORT" 2>&1
 echo "conflict reference" > topic_3.json
@@ -179,7 +179,7 @@ fi
 test_name="5. Intense Conflict Abort (--abort)"
 log_test "$test_name"
 git checkout article >> "$REPORT" 2>&1
-TARGET=$(git log --all --format="%H" --grep="article: commit 2")
+TARGET=$(git log --all -1 --format="%H" --grep="article: commit 2")
 git checkout -b article_conflict "$TARGET" >> "$REPORT" 2>&1
 echo "conflict A" > article_1.txt
 git add article_1.txt >> "$REPORT" 2>&1
@@ -212,8 +212,8 @@ fi
 # 6. Intense Revert (--revert) crossing branches
 test_name="6. Intense Revert crossing branches"
 log_test "$test_name"
-TARGET=$(git log --all --format="%H" --grep="master: commit 2")
-PATCH=$(git log --all --format="%H" --grep="feature: commit 5")
+TARGET=$(git log --all -1 --format="%H" --grep="master: commit 2")
+PATCH=$(git log --all -1 --format="%H" --grep="feature: commit 5")
 git checkout feature >> "$REPORT" 2>&1
 ORIG_MASTER=$(git rev-parse master)
 log_cmd "$INJECT_CMD" "$TARGET" "$PATCH" --copy -b master
@@ -229,8 +229,8 @@ fi
 # 7. Intense Detached HEAD handling
 test_name="7. Detached HEAD edge case"
 log_test "$test_name"
-TARGET=$(git log --all --format="%H" --grep="topic: commit 2")
-PATCH=$(git log --all --format="%H" --grep="topic: commit 4")
+TARGET=$(git log --all -1 --format="%H" --grep="topic: commit 2")
+PATCH=$(git log --all -1 --format="%H" --grep="topic: commit 4")
 git checkout topic~2 >> "$REPORT" 2>&1 # detached
 log_cmd "$INJECT_CMD" "$TARGET" "$PATCH"
 if grep -q "detached HEAD state" "$REPORT"; then
@@ -243,7 +243,7 @@ fi
 # 8. Intense Strategy --theirs across master/docs
 test_name="8. Strategy --theirs"
 log_test "$test_name"
-TARGET=$(git log --all --format="%H" --grep="master: commit 2")
+TARGET=$(git log --all -1 --format="%H" --grep="master: commit 2")
 git checkout -b strategy_conflict "$TARGET" >> "$REPORT" 2>&1
 echo "master content" > docs_5.yml
 git add docs_5.yml >> "$REPORT" 2>&1
@@ -272,7 +272,7 @@ fi
 # 9. Intense Clear State (--clear) manually aborted
 test_name="9. Manual Abort & Clear State (--clear)"
 log_test "$test_name"
-TARGET=$(git log --all --format="%H" --grep="article: commit 2")
+TARGET=$(git log --all -1 --format="%H" --grep="article: commit 2")
 git checkout -b clear_conflict "$TARGET" >> "$REPORT" 2>&1
 echo "conflict A" > article_1.txt
 git add article_1.txt >> "$REPORT" 2>&1
@@ -302,8 +302,8 @@ fi
 test_name="10. Implicit Patch on Reference"
 log_test "$test_name"
 git checkout reference >> "$REPORT" 2>&1
-TARGET=$(git log --all --format="%H" --grep="reference: commit 1")
-PATCH=$(git log --all --format="%H" --grep="reference: commit 5")
+TARGET=$(git log --all -1 --format="%H" --grep="reference: commit 1")
+PATCH=$(git log --all -1 --format="%H" --grep="reference: commit 5")
 git reset --hard "$PATCH" >> "$REPORT" 2>&1
 log_cmd "$INJECT_CMD" "$TARGET"
 NEW_TARGET=$(git log reference -1 --format="%H" --grep="reference: commit 1")
@@ -316,7 +316,7 @@ fi
 # 11. Recursive Guard Test
 test_name="11. Recursive Guard Test"
 log_test "$test_name"
-TARGET=$(git log --all --format="%H" --grep="master: commit 2")
+TARGET=$(git log --all -1 --format="%H" --grep="master: commit 2")
 git checkout -b recursive_conflict "$TARGET" >> "$REPORT" 2>&1
 echo "conflict A" > master_1.txt
 git add master_1.txt >> "$REPORT" 2>&1
@@ -354,8 +354,8 @@ git merge --no-ff feature_bubble -m "Merge bubble" >> "$REPORT" 2>&1
 MERGE_COMMIT=$(git rev-parse HEAD)
 
 # Inject into master~6 (before the bubble)
-TARGET=$(git log --all --format="%H" --grep="master: commit 4")
-PATCH=$(git log --all --format="%H" --grep="master: commit 10")
+TARGET=$(git log --all -1 --format="%H" --grep="master: commit 4")
+PATCH=$(git log --all -1 --format="%H" --grep="master: commit 10")
 log_cmd "$INJECT_CMD" "$TARGET" "$PATCH"
 if git log --merges | grep -q "Merge bubble"; then
     pass "$test_name"
@@ -367,7 +367,7 @@ fi
 # 13. Pre-existing Stash Stack Stress
 test_name="13. Pre-existing Stash Stack Stress"
 log_test "$test_name"
-TARGET=$(git log --all --format="%H" --grep="docs: commit 4")
+TARGET=$(git log --all -1 --format="%H" --grep="docs: commit 4")
 git checkout docs >> "$REPORT" 2>&1
 # Push 3 dummy stashes
 echo "stash1" > stash1.txt; git add stash1.txt >> "$REPORT" 2>&1; git stash push -m "stash1" >> "$REPORT" 2>&1
@@ -390,7 +390,7 @@ fi
 # 14. Deep Subdirectory Invocation
 test_name="14. Deep Subdirectory Invocation"
 log_test "$test_name"
-TARGET=$(git log --all --format="%H" --grep="master: commit 5")
+TARGET=$(git log --all -1 --format="%H" --grep="master: commit 5")
 git checkout master >> "$REPORT" 2>&1
 mkdir -p src/components/styles
 cd src/components/styles || exit 1
@@ -407,7 +407,7 @@ fi
 # 15. Gitignore Respect Test
 test_name="15. Gitignore Respect Test"
 log_test "$test_name"
-TARGET=$(git log --all --format="%H" --grep="master: commit 5")
+TARGET=$(git log --all -1 --format="%H" --grep="master: commit 5")
 git checkout master >> "$REPORT" 2>&1
 echo "ignored_file.tmp" > .gitignore
 git add .gitignore && git commit -m "Add gitignore" >> "$REPORT" 2>&1
@@ -424,8 +424,8 @@ fi
 test_name="16. Intense --into flag combinations"
 log_test "$test_name"
 git checkout master >> "$REPORT" 2>&1
-TARGET=$(git log --all --format="%H" --grep="master: commit 2")
-PATCH=$(git log --all --format="%H" --grep="master: commit 5")
+TARGET=$(git log --all -1 --format="%H" --grep="master: commit 2")
+PATCH=$(git log --all -1 --format="%H" --grep="master: commit 5")
 # Test <patch> --into <target>
 log_cmd "$INJECT_CMD" "$PATCH" --into "$TARGET"
 NEW_TARGET=$(git log master -1 --format="%H" --grep="master: commit 2")
@@ -439,7 +439,7 @@ fi
 # 17. Intense --file flag (selective working tree injection)
 test_name="17. Intense --file flag (selective working tree injection)"
 log_test "$test_name"
-TARGET=$(git log --all --format="%H" --grep="master: commit 2")
+TARGET=$(git log --all -1 --format="%H" --grep="master: commit 2")
 git checkout master >> "$REPORT" 2>&1
 echo "inject_me" > inject_file.txt
 echo "leave_me" > leave_file.txt
@@ -460,7 +460,7 @@ fi
 # 18. Intense --file flag validation
 test_name="18. Intense --file flag validation"
 log_test "$test_name"
-TARGET=$(git log --all --format="%H" --grep="master: commit 2")
+TARGET=$(git log --all -1 --format="%H" --grep="master: commit 2")
 git checkout master >> "$REPORT" 2>&1
 echo "test" > inject_file.txt
 git add inject_file.txt >> "$REPORT" 2>&1
@@ -480,7 +480,7 @@ fi
 # 19. Intense --file sentinel (-- )
 test_name="19. Intense --file sentinel (-- )"
 log_test "$test_name"
-TARGET=$(git log --all --format="%H" --grep="master: commit 2")
+TARGET=$(git log --all -1 --format="%H" --grep="master: commit 2")
 git checkout master >> "$REPORT" 2>&1
 echo "inject_me" > inject_file.txt
 git add inject_file.txt >> "$REPORT" 2>&1
@@ -511,7 +511,7 @@ fi
 # 21. Intense --file with deleted file
 test_name="21. Intense --file with deleted file"
 log_test "$test_name"
-TARGET=$(git log --all --format="%H" --grep="master: commit 2")
+TARGET=$(git log --all -1 --format="%H" --grep="master: commit 2")
 git checkout master >> "$REPORT" 2>&1
 rm master_3.json
 log_cmd "$INJECT_CMD" "$TARGET" --file master_3.json
