@@ -28,12 +28,13 @@ CLEANUP_ON_EXIT=true
 cleanup_trap() {
     if [ "$CLEANUP_ON_EXIT" = "true" ]; then
         if [ -d "$STATE_DIR" ]; then
-            # Abort any git operations that might be in progress if crashed/interrupted
-            if [ -d "$GIT_DIR/rebase-merge" ] || [ -d "$GIT_DIR/rebase-apply" ]; then
-                git rebase --abort >/dev/null 2>&1
-            fi
             if [ -f "$GIT_DIR/CHERRY_PICK_HEAD" ]; then
                 git cherry-pick --abort >/dev/null 2>&1
+                rm -f "$GIT_DIR/CHERRY_PICK_HEAD"
+            fi
+            if [ -d "$GIT_DIR/rebase-merge" ] || [ -d "$GIT_DIR/rebase-apply" ]; then
+                git rebase --abort >/dev/null 2>&1
+                rm -rf "$GIT_DIR/rebase-merge" "$GIT_DIR/rebase-apply"
             fi
             inject_cleanup
         fi
@@ -314,8 +315,11 @@ case "$1" in
             origin="$(<"$STATE_DIR/ORIG_BRANCH")"
             target_branch="$(<"$STATE_DIR/TARGET_BRANCH")"
             b_head="$(<"$BACKUP_HEAD")"
-            git rebase --abort >/dev/null 2>&1
+            git reset --hard HEAD >/dev/null 2>&1
             git cherry-pick --abort >/dev/null 2>&1
+            git rebase --abort >/dev/null 2>&1
+            rm -f "$GIT_DIR/CHERRY_PICK_HEAD"
+            rm -rf "$GIT_DIR/rebase-merge" "$GIT_DIR/rebase-apply"
             # Reset history on target branch
             git switch "$target_branch" >/dev/null 2>&1
             [ -n "$b_head" ] && git reset --hard "$b_head" >/dev/null 2>&1
