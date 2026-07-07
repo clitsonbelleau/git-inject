@@ -1,0 +1,42 @@
+name: Generate Documentation
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'git-inject.adoc'
+      - 'gen'
+  workflow_dispatch:
+
+jobs:
+  generate-docs:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Asciidoctor
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y asciidoctor ruby-asciidoctor-pdf
+
+      - name: Run gen script
+        run: |
+          bash ./gen
+
+      - name: Commit and Push changes
+        run: |
+          git config --global user.name "cbsggl-bot"
+          git config --global user.email "cbsggl-bot@clitson.nl"
+          git add git-inject.1 git-inject.html
+
+          if ! git diff --cached --quiet; then
+            git commit -m "docs: auto-generate documentation"
+            git push origin HEAD
+          else
+            echo "No changes to commit"
+          fi
