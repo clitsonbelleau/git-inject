@@ -1,13 +1,21 @@
 #!/usr/bin/env bash
 
 # git-inject: Merge changes into an older commit
-# Usage: git inject <target> [<patch>]
-#        git inject [<target>] (--working-tree | --staged)
-#        git inject [<target>] --file <file>...
-#        git inject (--continue | --abort | --revert | --clear)
-
-# Author:  Clitson Belleau <dev@clitson.nl>
-# License: GPL-3.0
+#
+# Copyright (C) 2026  Clitson Belleau <dev@clitson.nl>
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 if ! GIT_DIR="$(git rev-parse --absolute-git-dir 2>/dev/null)"; then
     printf "fatal: not a git repository\n"
