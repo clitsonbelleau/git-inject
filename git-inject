@@ -58,11 +58,18 @@ acquire_lock() {
 
 usage() {
     cat << EOF
+git-inject  Copyright (C) 2026  Clitson Belleau
+
+This program comes with ABSOLUTELY NO WARRANTY. This is
+free software, and you are welcome to redistribute it
+under the conditions of the license provided.
+
 Usage: git inject <target> [<patch>]
    or: git inject [<target>] (--working-tree | --staged)
-   or: git inject [<target>] --file <file>...
+   or: git inject [<target>] --file [FILE...]
    or: git inject (--continue | --abort | --revert | --clear)
 
+       <target> is required unless otherwise stated as optional.
        <patch> is an optional requirement (defaults to HEAD).
 
        Run 'git help inject' to view the manual.
