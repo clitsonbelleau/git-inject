@@ -393,6 +393,20 @@ case "$1" in
         ;;
 esac
 
+if [ -d "$STATE_DIR" ]; then
+    CLEANUP_ON_EXIT=false
+    cat << EOF
+Injection in progress!
+Handle conflicts before starting a new injection and then
+use '--continue' to finish the injection process.
+
+Use '--abort' to stop the current injection and '--clear'
+to remove previous injection state. For more information
+run 'git help inject'.
+EOF
+    exit 1
+fi
+
 # Init
 patch=""
 target=""
@@ -637,11 +651,6 @@ fi
 
 if [ "$use_copy" = true ] && [ "$use_branch" = false ]; then
     printf "Can only copy onto another branch.\n"
-    exit 1
-fi
-
-if [ -d "$STATE_DIR" ]; then
-    printf "An injection is already in progress.\nUse git inject --continue, --abort, or --clear.\n"
     exit 1
 fi
 
