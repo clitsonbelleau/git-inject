@@ -125,8 +125,11 @@ inject_cleanup() {
     if [ -f "$STATE_DIR/ORIG_BRANCH" ]; then
         origin="$(cat "$STATE_DIR/ORIG_BRANCH" 2>/dev/null)"
         if [ -n "$origin" ] && [ "$(git branch --show-current)" != "$origin" ]; then
-            printf "Returning to branch %s...\n" "$origin"
-            git switch "$origin" >/dev/null 2>&1 || git checkout "$origin" >/dev/null 2>&1
+            if git switch "$origin" >/dev/null 2>&1 || git checkout "$origin" >/dev/null 2>&1; then
+                printf "Returned to branch '%s'\n" "$origin"
+            else
+                printf "error: Failed to return to branch '%s'\n" "$origin"
+            fi
         fi
     fi
 
