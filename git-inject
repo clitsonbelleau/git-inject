@@ -359,7 +359,7 @@ case "$1" in
             # Reset history on target branch
             git switch "$target_branch" >/dev/null 2>&1
             [ -n "$b_head" ] && git reset --hard "$b_head" >/dev/null 2>&1
-            printf "Injection aborted. Returned branch '%s' to HEAD at %s.\n" "$target_branch" "$(parse -s "$b_head")"
+            printf "Injection aborted. Returned branch '%s' to %s.\n" "$target_branch" "$(parse -s "$b_head")"
             # Switch back to invocation branch and cleanup
             git switch "$origin" >/dev/null 2>&1
             inject_cleanup "abort"
@@ -695,7 +695,7 @@ touch "$STATE_DIR/INDEX_HEAD"
 # Determine target branch
 if [ -n "$target_branch" ]; then
     if ! git show-ref --verify --quiet "refs/heads/$target_branch"; then
-        printf "Branch \"%s\" does not exist.\n" "$target_branch"
+        printf "Branch '%s' does not exist.\n" "$target_branch"
         exit 1
     fi
     echo "$target_branch" > "$STATE_DIR/TARGET_BRANCH"
@@ -717,7 +717,7 @@ echo "$target_branch" > "$REVERT_BRANCH"
 if target="$(verify "$target" 2>/dev/null)"; then
     echo "$target" > "$STATE_DIR/TARGET"
 else
-    printf "Invalid target %s.\n" "$target"; exit 1
+    printf "Invalid target '%s'.\n" "$target"; exit 1
 fi
 
 if [ "$use_working_tree" = true ] || [ "$use_staged" = true ] || [ "$use_file" = true ]; then
@@ -777,7 +777,7 @@ fi
 if patch="$(verify "$patch" 2>/dev/null)"; then
     echo "$patch" > "$STATE_DIR/PATCH"
 else
-    printf "Invalid patch %s.\n" "$patch"; exit 1
+    printf "Invalid patch '%s'.\n" "$patch"; exit 1
 fi
 
 if [ "$target" = "$patch" ]; then
