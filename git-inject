@@ -714,10 +714,12 @@ parse "$target_branch" > "$REVERT_HEAD"
 echo "$target_branch" > "$REVERT_BRANCH"
 
 # Hash of the <target> commit
+_t="$target"
 if target="$(verify "$target" 2>/dev/null)"; then
     echo "$target" > "$STATE_DIR/TARGET"
 else
-    printf "Invalid target '%s'.\n" "$target"; exit 1
+    printf "Invalid target '%s'.\n" "$_t"
+    exit 1
 fi
 
 if [ "$use_working_tree" = true ] || [ "$use_staged" = true ] || [ "$use_file" = true ]; then
