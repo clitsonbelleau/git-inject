@@ -515,6 +515,12 @@ while [ $# -gt 0 ]; do
             __dry_run_flags+=("$1")
             shift
             ;;
+        --root)
+            # parse --root commit
+            root="$(git rev-list --max-parents=0 HEAD)"
+            positional_args+=("$root")
+            shift
+            ;;
         -*)
             printf "Unknown option %s\n" "$1"
             exit 1
