@@ -807,8 +807,12 @@ if [ "$use_working_tree" = false ]; then
 fi
 
 if [ "$target_branch" != "$origin" ]; then
-    printf "Switching to branch %s...\n" "$target_branch"
-    git switch "$target_branch" || exit 1
+    if git switch "$target_branch" >/dev/null 2>&1; then
+        printf "Switched to branch '%s'\n" "$target_branch"
+    else
+        printf "error: Failed to switch to branch '%s'\n" "$target_branch"
+        exit 1
+    fi
 fi
 
 # Hash copy of the current HEAD on target branch.
