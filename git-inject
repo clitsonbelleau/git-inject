@@ -234,7 +234,7 @@ start_injection() {
 
     export_sequence_editor
 
-    printf "Starting optimized rebase from target parent...\n"
+    printf "Injection target: %s\n" "$target"
 
     # If the user tries to inject changes into the very first commit of the
     # repository, $target^ will fail to resolve because it has no parent.
