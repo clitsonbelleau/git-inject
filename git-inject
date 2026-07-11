@@ -52,7 +52,7 @@ cleanup_trap() {
 
 trap cleanup_trap EXIT
 
-acquire_lock() {
+script_lock() {
     if [ -f "$LOCK_FILE" ]; then
         local pid
         pid="$(cat "$LOCK_FILE" 2>/dev/null)"
@@ -312,7 +312,7 @@ finalize_injection() {
     fi
 }
 
-acquire_lock
+script_lock
 
 # Mode options --revert and --clear should not perform with active cherry-picks or rebases
 has_active_cherry_pick_rebase=$(
