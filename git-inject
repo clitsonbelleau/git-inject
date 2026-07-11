@@ -314,6 +314,11 @@ finalize_injection() {
 
 acquire_lock
 
+# Mode options --revert and --clear should not perform with active cherry-picks or rebases
+has_active_cherry_pick_rebase=$(
+  [ -f "$GIT_DIR/CHERRY_PICK_HEAD" ] || [ -d "$GIT_DIR/rebase-merge" ] || [ -d "$GIT_DIR/rebase-apply" ]
+)
+
 case "$1" in
     --continue)
         if [ ! -d "$STATE_DIR" ]; then
@@ -373,6 +378,13 @@ case "$1" in
             printf "No revert information found.\n"
             exit 1
         fi
+
+        if [ -d "$STATE_DIR" ] && $has_active_cherry_pick_rebase; then
+            CLEANUP_ON_EXIT=false
+            printf "error: Cannot clear working files with active injection\n"
+            exit 1
+        fi
+
         [ -f "$REVERT_HEAD" ] || { printf "Missing revert HEAD.\n"; exit 1; }
         [ -f "$REVERT_BRANCH" ] || { printf "Missing revert branch.\n"; exit 1; }
 
@@ -394,7 +406,17 @@ case "$1" in
             printf "No working files found.\n"
             exit 0
         fi
-        [ -d "$STATE_DIR" ] && rm -rf "$STATE_DIR"
+
+        if [ -d "$STATE_DIR" ]; then
+            if $has_active_cherry_pick_rebase; then
+                CLEANUP_ON_EXIT=false
+                printf "error: Cannot clear working files with active injection\n"
+                exit 1
+            else
+                rm -rf "$STATE_DIR"
+            fi
+        fi
+
         [ -f "$REVERT_HEAD" ] && rm -f "$REVERT_HEAD"
         [ -f "$REVERT_BRANCH" ] && rm -f "$REVERT_BRANCH"
         [ -f "$LOCK_FILE" ] && rm -f "$LOCK_FILE"
