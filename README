@@ -8,47 +8,69 @@ NAME
 SYNOPSIS
        git inject <target> [<patch>]
        git inject [<target>] --staged
-       git inject [<target>] --file <file>...
+       git inject [<target>] --file [FILE...]
        git inject (--continue | --abort | --revert | --clear)
 
 
 DESCRIPTION
-       `git inject` performs an automatic `git rebase` operation to remove
-       the patch commit from the history on the current branch, then apply
-       the patch diffs to the target commit. Any changes in the current
-       branch that are not committed to history are saved to a temporary
-       area (unless `--staged` option is supplied to the command) and
-       restored upon successful completion of the injection process.
+       `git inject` collects the changes in a patch commit on the
+       specified branch, then applies the patch diffs to the target
+       commit.
 
-       `git-inject` is best suited for shallow fixes and patchwork in
-       commits on local repositories and personal branches where the others
-       are not basing their work and quick cleaning of commits in the git
-       tree before pushing upstream.
+       All changes on the current branch that are not in the staging
+       area are saved to a temporary area (unless `--working-tree`
+       option is supplied to the command) and restored upon successful
+       completion of the injection process.
 
        A target commit is either supplied or assumed. If only `<target>`
-       is specified, the current `HEAD` commit is used as the value of
-       the patch.
+       is specified, the changes on the current `HEAD` commit are used
+       as the patch.
 
-       It is possible that a merge failure will prevent this process from
-       being completely automatic. You will have to resolve any such merge
-       failure and run `git inject --continue`.
+       If `--working-tree` is supplied and `<target>` is not specified,
+       then `HEAD` will be the assumed target commit and the changes
+       will be injected into the current `HEAD` commit.
 
-       To check out the original `HEAD` and remove the `.git/INJECT_STATE/`
-       working files, use the command `git inject --abort` instead.
+       It is possible that a merge failure will prevent this process
+       from being completely automatic.
+
+       You will have to resolve any such merge failure and run
+       `git inject --continue`.
+
+       Use `git inject --abort` to stop an injection process, remove the
+       `.git/INJECT_STATE/` working files, and return any saved files to
+       the working directory.
 
 
 INSTALLATION
-       Clone the repository and then run the installation script for your
-       operating system.
+       Copy and paste this command in a terminal. Elevated privileges
+       are necessary to install the git-inject documentation.
 
-       Windows:
 
-           powershell.exe -ExecutionPolicy Bypass -File .\install.ps1
+              curl -fsSL https://dl.clitson.nl/git-inject | sh
 
-       Linux/macOS:
 
-           chmod +x install.sh
-           ./install.sh
+       To run the installer locally, clone the repository and then run
+       the installation script in an elevated terminal.
+
+
+              chmod +x install.sh
+              ./install.sh --local
+
+
+
+MODE OPTIONS
+       --continue::
+              Resume the injection process after resolving merge
+              conflicts. Use this instead of native git continue
+              commands.
+
+       --abort::
+              Abort the inject operation and reset `HEAD` to the
+              original branch and restores any stashed changes.
+              Use this instead of native git abort commands.
+
+       --clear::
+              Clean up the `git-inject` working state files.
 
 
 OPTIONS
@@ -61,11 +83,6 @@ OPTIONS
               patch commit is on the same branch where the injection was
               started, the commit is removed from the branch history
               during injection.
-
-       -s
-       --staged
-              Inject all changes in the index (staging area) into the
-              specified target.
 
        --is-empty
               Allow the creation of an empty commit if the patch contains
@@ -82,37 +99,37 @@ SANDBOX
        To create a temporary sandbox to test the command, clone the
        repository then run
 
-           chmod +x ./test/sandbox
-           ./test/sandbox setup
 
-       and navigate to the generated 'git-inject-sandbox/' folder and open
-       the git project.
+              chmod +x ./test/sandbox
+              ./test/sandbox setup
+
+
+       and navigate to the generated 'git-inject-sandbox/' folder and
+       open the git project.
 
        The sandbox is crated with six branches, two of which are orphan
-       branches and the other four are split between the orphans, two each.
-       The included files are designed to be distinguishable from each
-       other by file extension.
+       branches and the other four are split between the orphans, two
+       each. The included files are designed to be distinguishable from
+       each other by file extension.
 
        Here's what the tree structure would look like:
 
-           * 82f1807 (feature)           * 6cf071b (reference)
-           | * 6c0b3b1 (topic)           | * 41d729a (article)
-           | | * b4afe1c (master)        | | * 6316505 (docs)
-           | |/                          | |/
-           |/|                           |/|
-           * | d08a371                   * | 02a7b8f
-           |/                            |/
-           * 34252d6                     * b6d343a
 
-       The tree is truncated to cut down unnecessary empty space.
+              * 82f1807 (feature)           * 6cf071b (reference)
+              | * 6c0b3b1 (topic)           | * 41d729a (article)
+              | | * b4afe1c (master)        | | * 6316505 (docs)
+              | |/                          | |/
+              |/|                           |/|
+              * | d08a371                   * | 02a7b8f
+              |/                            |/
+              * 34252d6                     * b6d343a
 
 
-AUTHOR
-       Written by Clitson Belleau <dev@clitson.nl>.
+       The tree is truncated to save space.
 
 
 GIT
        Not part of the git(1) suite. This is a third-party tool.
 
 
-GIT-INJECT(1)                     05/12/2026                      GIT-INJECT(1)
+GIT-INJECT(1)                     07/11/2026                      GIT-INJECT(1)
