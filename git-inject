@@ -470,7 +470,7 @@ while [ $# -gt 0 ]; do
             __dry_run_flags+=("$1")
             shift
             ;;
-        --copy | -c)
+        -c | --copy)
             use_copy=true
             __dry_run_flags+=("$1")
             shift
