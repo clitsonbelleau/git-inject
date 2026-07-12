@@ -37,6 +37,12 @@ in an elevated terminal.
       ./install.sh --local
 
 
+Run 'git help inject' after installation to view
+the full documentation or view the HTML document
+in this repository at https://htmlpreview.github.io/?https://github.com/clitsonbelleau/git-inject/blob/main/git-inject.html
+<!-- https://rawcdn.githack.com/clitsonbelleau/git-inject/refs/heads/main/git-inject.html -->
+
+
 
 
 EXAMPLES
