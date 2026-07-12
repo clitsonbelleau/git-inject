@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="generator" content="Asciidoctor 2.0.26">
+<meta name="generator" content="Asciidoctor 2.0.20">
 <meta name="author" content="Clitson Belleau">
 <title>git-inject(1)</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Open+Sans:300,300italic,400,400italic,600,600italic%7CNoto+Serif:400,400italic,700,700italic%7CDroid+Sans+Mono:400,700">
@@ -117,6 +117,7 @@ h1 strong,h2 strong,h3 strong,#toctitle strong,.sidebarblock>.content>.title str
 :not(pre):not([class^=L])>code{font-size:.9375em;font-style:normal!important;letter-spacing:0;padding:.1em .5ex;word-spacing:-.15em;background:#f7f7f8;border-radius:4px;line-height:1.45;text-rendering:optimizeSpeed}
 pre{color:rgba(0,0,0,.9);font-family:"Droid Sans Mono","DejaVu Sans Mono",monospace;line-height:1.45;text-rendering:optimizeSpeed}
 pre code,pre pre{color:inherit;font-size:inherit;line-height:inherit}
+pre>code{display:block}
 pre.nowrap,pre.nowrap pre{white-space:pre;word-wrap:normal}
 em em{font-style:normal}
 strong strong{font-weight:400}
@@ -140,7 +141,7 @@ p a>code:hover{color:rgba(0,0,0,.9)}
 #content::before{content:none}
 #header>h1:first-child{color:rgba(0,0,0,.85);margin-top:2.25rem;margin-bottom:0}
 #header>h1:first-child+#toc{margin-top:8px;border-top:1px solid #dddddf}
-#header>h1:only-child{border-bottom:1px solid #dddddf;padding-bottom:8px}
+#header>h1:only-child,body.toc2 #header>h1:nth-last-child(2){border-bottom:1px solid #dddddf;padding-bottom:8px}
 #header .details{border-bottom:1px solid #dddddf;line-height:1.45;padding-top:.25em;padding-bottom:.25em;padding-left:.25em;color:rgba(0,0,0,.6);display:flex;flex-flow:row wrap}
 #header .details span:first-child{margin-left:-.125em}
 #header .details span.email a{color:rgba(0,0,0,.85)}
@@ -162,7 +163,6 @@ p a>code:hover{color:rgba(0,0,0,.9)}
 #toctitle{color:#7a2518;font-size:1.2em}
 @media screen and (min-width:768px){#toctitle{font-size:1.375em}
 body.toc2{padding-left:15em;padding-right:0}
-body.toc2 #header>h1:nth-last-child(2){border-bottom:1px solid #dddddf;padding-bottom:8px}
 #toc.toc2{margin-top:0!important;background:#f8f8f7;position:fixed;width:15em;left:0;top:0;border-right:1px solid #e7e7e9;border-top-width:0!important;border-bottom-width:0!important;z-index:1000;padding:1.25em 1em;height:100%;overflow:auto}
 #toc.toc2 #toctitle{margin-top:0;margin-bottom:.8rem;font-size:1.2em}
 #toc.toc2>ul{font-size:.9em;margin-bottom:0}
@@ -219,7 +219,6 @@ table.tableblock.fit-content>caption.title{white-space:nowrap;width:0}
 .literalblock pre,.listingblock>.content>pre:not(.highlight),.listingblock>.content>pre[class=highlight],.listingblock>.content>pre[class^="highlight "]{background:#f7f7f8}
 .literalblock.output pre{color:#f7f7f8;background:rgba(0,0,0,.9)}
 .listingblock>.content{position:relative}
-.listingblock pre>code{display:block}
 .listingblock code[data-lang]::before{display:none;content:attr(data-lang);position:absolute;font-size:.75em;top:.425rem;right:.5rem;line-height:1;text-transform:uppercase;color:inherit;opacity:.5}
 .listingblock:hover code[data-lang]::before{display:block}
 .listingblock.terminal pre .command::before{content:attr(data-prompt);padding-right:.5em;color:inherit;opacity:.5}
@@ -329,7 +328,7 @@ a.image{text-decoration:none;display:inline-block}
 a.image object{pointer-events:none}
 sup.footnote,sup.footnoteref{font-size:.875em;position:static;vertical-align:super}
 sup.footnote a,sup.footnoteref a{text-decoration:none}
-sup.footnote a:active,sup.footnoteref a:active,#footnotes .footnote a:first-of-type:active{text-decoration:underline}
+sup.footnote a:active,sup.footnoteref a:active{text-decoration:underline}
 #footnotes{padding-top:.75em;padding-bottom:.75em;margin-bottom:.625em}
 #footnotes hr{width:20%;min-width:6.25em;margin:-.25em 0 .75em;border-width:1px 0 0}
 #footnotes .footnote{padding:0 .375em 0 .225em;line-height:1.3334;font-size:.875em;margin-left:1.2em;margin-bottom:.2em}
@@ -440,7 +439,7 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 <h1>git-inject(1) Manual Page</h1>
 <h2 id="_name">NAME</h2>
 <div class="sectionbody">
-<p>git-inject - Merge changes into an older commit</p>
+<p>git-inject - Apply patch diffs to a target commit</p>
 </div>
 </div>
 <div id="content">
@@ -450,7 +449,7 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 <div class="verseblock">
 <pre class="content"><em>git inject</em> &lt;target&gt; [&lt;patch&gt;]
 <em>git inject</em> [&lt;target&gt;] (--working-tree | --staged)
-<em>git inject</em> [&lt;target&gt;] --file &lt;file&gt;&#8230;&#8203;
+<em>git inject</em> [&lt;target&gt;] --file [FILE&#8230;&#8203;]
 <em>git inject</em> (--continue | --abort | --revert | --clear)</pre>
 </div>
 </div>
@@ -459,28 +458,23 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 <h2 id="_description">DESCRIPTION</h2>
 <div class="sectionbody">
 <div class="paragraph">
-<p><code>git inject</code> performs an automatic <code>git rebase</code> operation to remove the patch commit from the history on the current branch, then apply the patch diffs to the target commit.
-Any changes in the current branch that are not committed to history are saved to a temporary area (unless <code>--working-tree</code> or <code>--staged</code> option is supplied to the command) and restored upon successful completion of the injection process.</p>
-</div>
-<div class="paragraph">
-<p><code>git-inject</code> is best suited for shallow fixes and patchwork in commits on local repositories and personal branches where the others are not basing their work and quick cleaning of commits in the git tree before pushing upstream.</p>
+<p><code>git inject</code> collects the changes in a patch commit on the specified branch, then applies the patch diffs to the target commit.
+All changes on the current branch that are not in the staging area are saved to a temporary area (unless <code>--working-tree</code> option is supplied to the command) and restored upon successful completion of the injection process.</p>
 </div>
 <div class="paragraph">
 <p>A target commit is either supplied or assumed.
-If only <code>&lt;target&gt;</code> is specified, the current <code>HEAD</code> commit is used as the value of the patch.</p>
+If only <code>&lt;target&gt;</code> is specified, the changes on the current <code>HEAD</code> commit are used as the patch.</p>
 </div>
 <div class="paragraph">
-<p>If <code>--working-tree</code> is supplied and <code>&lt;target&gt;</code> is not specified, the value of the target will be assumed to be <code>HEAD</code> and the diffs will be injected into the most recent commit of the current branch.</p>
+<p>If <code>--working-tree</code> is supplied and <code>&lt;target&gt;</code> is not specified, then <code>HEAD</code> will be the assumed target commit and the changes will be injected into the current <code>HEAD</code> commit.</p>
 </div>
 <div class="paragraph">
 <p>It is possible that a merge failure will prevent this process from being completely automatic.
 You will have to resolve any such merge failure and run <code>git inject --continue</code>.</p>
 </div>
 <div class="paragraph">
-<p>To check out the original <code>HEAD</code> and remove the <code>.git/INJECT_STATE/</code> working files, use the command <code>git inject --abort</code> instead.</p>
+<p>Use <code>git inject --abort</code> to stop an injection process, remove the <code>.git/INJECT_STATE/</code> working files, and return any saved files to the working directory.</p>
 </div>
-<div class="sect2">
-<h3 id="_basic_behavior">Basic Behavior</h3>
 <div class="paragraph">
 <p>Assume that the following history exists on the current branch.</p>
 </div>
@@ -500,11 +494,12 @@ You will have to resolve any such merge failure and run <code>git inject --conti
 </div>
 </div>
 <div class="paragraph">
-<p>To merge <code>E</code> into <code>B</code>, the result of the following command:</p>
+<p>the result either one of the following commands:</p>
 </div>
 <div class="literalblock">
 <div class="content">
-<pre>git inject B E</pre>
+<pre>git inject B E
+git inject E --into B</pre>
 </div>
 </div>
 <div class="paragraph">
@@ -519,36 +514,30 @@ You will have to resolve any such merge failure and run <code>git inject --conti
 <p><code>B'</code> now contains the combined changes of <code>B</code> and <code>E</code>.
 If there are no conflicts, the other commits remain unaffected.</p>
 </div>
-</div>
-<div class="sect2">
-<h3 id="_injecting_head">Injecting HEAD</h3>
 <div class="paragraph">
 <p>Let&#8217;s assume that the commit with the patch changes are currently at <code>HEAD</code>, and you want to merge those changes into commit <code>B</code>:</p>
 </div>
 <div class="listingblock">
 <div class="content">
 <pre>    A---B---C---D---E---F  HEAD
-        ^
-      target</pre>
+        ^               ^
+      target          patch</pre>
 </div>
 </div>
 <div class="paragraph">
-<p>We can do this using either of the following commands:</p>
+<p>then the command</p>
 </div>
 <div class="literalblock">
 <div class="content">
-<pre>git inject B
-git inject --into B</pre>
+<pre>git inject B</pre>
 </div>
 </div>
 <div class="paragraph">
-<p>which will result in:</p>
+<p>would result in:</p>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre>    A---B'---C'---D'---E'  HEAD
-        ^
-      target</pre>
+<pre>    A---B'---C'---D'---E'  HEAD</pre>
 </div>
 </div>
 <div class="admonitionblock note">
@@ -562,319 +551,6 @@ git inject --into B</pre>
 </td>
 </tr>
 </table>
-</div>
-</div>
-<div class="sect2">
-<h3 id="_cross_branch_injection_experimental">Cross-branch Injection (Experimental)</h3>
-<div class="paragraph">
-<p>There are two methods to inject changes into other branches:
-a regular injection, where the patch commit will be removed from history and merged into the target commit on the specified branch; and
-a direct copy of the patch commit changes, where the specified patch commit will not be removed but instead have the diffs copied into the target commit.</p>
-</div>
-<div class="paragraph">
-<p>Here&#8217;s how you would inject changes into a target commit on a different branch.</p>
-</div>
-<div class="paragraph">
-<p>First let&#8217;s assume your topic is based on branch <code>master</code>.</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre>    A---B---C---D---E  master
-             \
-              A---B---C  topic</pre>
-</div>
-</div>
-<div class="sect3">
-<h4 id="_normal_injection">Normal injection</h4>
-<div class="paragraph">
-<p>Suppose you want to inject the last commit of the topic branch into commit <code>C</code> on the <code>master</code> branch without checking out <code>master</code>.</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre>    A---B---C---D---E  master
-             \
-              A---B---C  topic
-                      ^
-                    target</pre>
-</div>
-</div>
-<div class="paragraph">
-<p>You can do this using:</p>
-</div>
-<div class="literalblock">
-<div class="content">
-<pre>git inject C topic --branch master</pre>
-</div>
-</div>
-<div class="paragraph">
-<p><code>git inject</code> first performs a switch to the <code>master</code> branch, performs the history rewrite, and results in:</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre>    A---B---C'---D'---E'  master
-             \
-              A---B---C  topic</pre>
-</div>
-</div>
-</div>
-<div class="sect3">
-<h4 id="_copying_changes_to_a_specified_branch">Copying changes to a specified branch</h4>
-<div class="paragraph">
-<p>Suppose you want to copy the changes of commit <code>D</code> on the <code>master</code> branch to commit <code>B</code> on <code>topic</code>:</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre>    A---B---C-------D---E  HEAD  master
-             \      ^
-              \   patch
-               \
-                A---B---C  topic
-                    ^
-                  target</pre>
-</div>
-</div>
-<div class="paragraph">
-<p>The following command:</p>
-</div>
-<div class="literalblock">
-<div class="content">
-<pre>git inject B D --branch topic --copy</pre>
-</div>
-</div>
-<div class="paragraph">
-<p>would result in:</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre>    A---B---C---D---E  master
-             \
-              A---B'---C'  topic</pre>
-</div>
-</div>
-<div class="paragraph">
-<p><code>B'</code> now contains the combined changes of <code>B</code> and <code>D</code>, while <code>D</code> is retained in the branch history rather than being dropped.</p>
-</div>
-<div class="admonitionblock note">
-<table>
-<tr>
-<td class="icon">
-<div class="title">Note</div>
-</td>
-<td class="content">
-When <code>--copy</code> is specified, <code>--branch</code> must also be specified.
-Copying commits within the same branch is not permitted; and copying uncommitted changes is not possible.
-</td>
-</tr>
-</table>
-</div>
-</div>
-</div>
-<div class="sect2">
-<h3 id="_uncommitted_changes">Uncommitted Changes</h3>
-<div class="paragraph">
-<p>To inject uncommitted changes into an older commit, you use the <code>--working-tree</code> option to include all changes directly from your working directory, the <code>--staged</code> option for only selected changes to be injected or <code>--files</code> to only inject changes from specific files in the repository.</p>
-</div>
-<div class="admonitionblock note">
-<table>
-<tr>
-<td class="icon">
-<div class="title">Note</div>
-</td>
-<td class="content">
-If the target commit is <code>HEAD</code>, <code>git inject</code> will amend the commit at <code>HEAD</code> instead of performing a rebase operation.
-</td>
-</tr>
-</table>
-</div>
-<div class="paragraph">
-<p>Assume the following history, and you have uncommitted changes in your working directory:</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre>    A---B---C---D---E HEAD  +  M/A/D/??  (Uncommitted changes)
-            ^
-          target</pre>
-</div>
-</div>
-<div class="sect3">
-<h4 id="_using_staged_changes">Using staged changes</h4>
-<div class="paragraph">
-<p>Running either of the following commands:</p>
-</div>
-<div class="literalblock">
-<div class="content">
-<pre>git inject --staged C
-git inject -s C</pre>
-</div>
-</div>
-<div class="paragraph">
-<p>would result in:</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre>    A---B---C'---D'---E' HEAD  +  M/A/D/??  (Uncommitted changes)</pre>
-</div>
-</div>
-<div class="paragraph">
-<p><code>C'</code> now contains the original changes of <code>C</code> plus the staged changes. The working tree is cleaned up automatically.</p>
-</div>
-</div>
-<div class="sect3">
-<h4 id="_using_the_working_tree_experimental">Using the working tree (Experimental)</h4>
-<div class="paragraph">
-<p>Running either of the following commands:</p>
-</div>
-<div class="literalblock">
-<div class="content">
-<pre>git inject --working-tree C
-git inject -w C</pre>
-</div>
-</div>
-<div class="paragraph">
-<p>would result in:</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre>    A---B---C'---D'---E'  HEAD</pre>
-</div>
-</div>
-<div class="paragraph">
-<p><code>C'</code> now contains the original changes of <code>C</code> plus the uncommitted changes. The working tree is cleaned up automatically.</p>
-</div>
-<div class="admonitionblock caution">
-<table>
-<tr>
-<td class="icon">
-<div class="title">Caution</div>
-</td>
-<td class="content">
-<code>--working-tree</code> will commit <strong>everything</strong> in your current git repository.
-Understand the risks before using this option.
-If unsure, add your changes to the index and use <code>--staged</code> instead.
-</td>
-</tr>
-</table>
-</div>
-</div>
-<div class="sect3">
-<h4 id="_using_specific_files">Using specific files</h4>
-<div class="paragraph">
-<p>If you want to inject only specific files from your working tree while preserving other uncommitted changes, use the <code>--file</code> option.</p>
-</div>
-<div class="literalblock">
-<div class="content">
-<pre>git inject fe8fd5d --file file1.txt file2.txt</pre>
-</div>
-</div>
-</div>
-</div>
-<div class="sect2">
-<h3 id="_root_commit_injection_experimental">Root Commit Injection (Experimental)</h3>
-<div class="paragraph">
-<p><code>git-inject</code> handles the special case of injecting changes into the very first commit of a repository (the root commit).</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre>    R---A---B---C  HEAD
-    ^       ^
-  target  patch</pre>
-</div>
-</div>
-<div class="paragraph">
-<p>Running the command</p>
-</div>
-<div class="literalblock">
-<div class="content">
-<pre>git inject R B</pre>
-</div>
-</div>
-<div class="paragraph">
-<p>results in:</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre>    R'---A'---C'  HEAD</pre>
-</div>
-</div>
-<div class="paragraph">
-<p>Where <code>R'</code> is the new root commit containing the original <code>R</code> plus the changes from <code>B</code>.</p>
-</div>
-</div>
-<div class="sect2">
-<h3 id="_injecting_into_empty_commits">Injecting into empty commits</h3>
-<div class="paragraph">
-<p>Suppose you have a history that looks like this:</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre>    A---B---Z---C  HEAD
-            ^
-          target (fix: a minor bug)</pre>
-</div>
-</div>
-<div class="paragraph">
-<p>where <code>Z</code> is an empty commit (or placeholder) for unfinished fixes that would be split while working on your current feature.</p>
-</div>
-<div class="paragraph">
-<p>After the fix has been confirmed to be working correctly with your feature, you can inject the changes using either one of the following commands based on your workflow:</p>
-</div>
-<div class="literalblock">
-<div class="content">
-<pre>git inject -w Z --is-empty
-git inject -s Z --is-empty
-git inject --file source.c -- --into Z --is-empty</pre>
-</div>
-</div>
-<div class="admonitionblock note">
-<table>
-<tr>
-<td class="icon">
-<div class="title">Note</div>
-</td>
-<td class="content">
-<code>--is-empty</code> is required if the commit was originally empty before the injection.
-</td>
-</tr>
-</table>
-</div>
-<div class="paragraph">
-<p>After injection, the result would be:</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre>    A---B---Z'---C'  HEAD</pre>
-</div>
-</div>
-</div>
-<div class="sect2">
-<h3 id="_conflict_resolution">Conflict Resolution</h3>
-<div class="paragraph">
-<p>In case of conflict, <code>git inject</code> works in the same as <code>git rebase</code> and will stop at the first problematic commit and leave conflict markers in the tree (see <a href="git-rebase.html">git-rebase(1)</a>).</p>
-</div>
-<div class="paragraph">
-<p>After resolving the conflict manually and updating the index with the desired resolution, you can continue the injection process with</p>
-</div>
-<div class="literalblock">
-<div class="content">
-<pre>git inject --continue</pre>
-</div>
-</div>
-<div class="paragraph">
-<p>Alternatively, you can stop the <code>git inject</code> with</p>
-</div>
-<div class="literalblock">
-<div class="content">
-<pre>git inject --abort</pre>
-</div>
-</div>
-<div class="paragraph">
-<p>If the injection was flawed or you want to completely undo the injection, you can revert the injection with</p>
-</div>
-<div class="literalblock">
-<div class="content">
-<pre>git inject --revert</pre>
-</div>
-</div>
 </div>
 </div>
 </div>
@@ -927,6 +603,15 @@ This commit must be a direct ancestor of the <code>&lt;patch&gt;</code> commit.<
 <p>See also INCOMPATIBLE OPTIONS below.</p>
 </div>
 </dd>
+<dt class="hdlist1">-w</dt>
+<dt class="hdlist1">--working-tree</dt>
+<dd>
+<p>Inject all changes in the working tree into the specified target.
+These are uncommitted changes and will not return to the staging area when <code>git inject --revert</code> is used.</p>
+<div class="paragraph">
+<p>See also INCOMPATIBLE OPTIONS below.</p>
+</div>
+</dd>
 <dt class="hdlist1">--is-empty</dt>
 <dd>
 <p>Allow the creation of an empty commit if the patch contains no changes or if the changes are already present in the target history.</p>
@@ -937,13 +622,25 @@ This commit must be a direct ancestor of the <code>&lt;patch&gt;</code> commit.<
 Inject the patch commit into the specified target.
 Does not alter script operation.</p>
 </dd>
-<dt class="hdlist1">--copy</dt>
+<dt class="hdlist1">--file [FILE&#8230;&#8203;]</dt>
 <dd>
-<p>Copy diff changes from one commit to another.
-Commits copied are not deleted.</p>
+<p>Inject changes from specific files or directories into the target.
+This option cannot be used with <code>--working-tree</code>, <code>--staged</code>, or an explicit <code>&lt;patch&gt;</code>.</p>
 <div class="paragraph">
-<p>See also INCOMPATIBLE OPTIONS and BUGS below.</p>
+<p>To add more options after the file list is concluded, you must use the <code>--</code> operator to signify the end of the list. An example is provided below.</p>
 </div>
+<div class="literalblock">
+<div class="content">
+<pre>git inject --file gesture.c include/ -- --into feature/gesture</pre>
+</div>
+</div>
+<div class="paragraph">
+<p>See also INCOMPATIBLE OPTIONS below.</p>
+</div>
+</dd>
+<dt class="hdlist1">--root</dt>
+<dd>
+<p>Inject commits into the very first commit of the git tree.</p>
 </dd>
 </dl>
 </div>
@@ -954,13 +651,13 @@ Commits copied are not deleted.</p>
 <div class="sectionbody">
 <div class="dlist">
 <dl>
-<dt class="hdlist1">-w</dt>
-<dt class="hdlist1">--working-tree</dt>
+<dt class="hdlist1">-c</dt>
+<dt class="hdlist1">--copy</dt>
 <dd>
-<p>Inject all changes in the working tree into the specified target.
-These are uncommitted changes and will not return to the staging area when <code>git inject --revert</code> is used.</p>
+<p>Copy diff changes from one commit to another.
+Commits copied are not deleted.</p>
 <div class="paragraph">
-<p>See also INCOMPATIBLE OPTIONS below.</p>
+<p>See also INCOMPATIBLE OPTIONS and BUGS below.</p>
 </div>
 </dd>
 <dt class="hdlist1">-b</dt>
@@ -977,22 +674,6 @@ These are uncommitted changes and will not return to the staging area when <code
 This applies to internal rebase and cherry-pick operations.
 If you expect conflicts and want the newer patch commit&#8217;s changes to automatically overwrite the older target&#8217;s changes, you can pass the <code>--theirs</code> option.
 This applies the <code>-X theirs</code> merge strategy and bypasses manual conflict resolution for those files.</p>
-</dd>
-<dt class="hdlist1">--file &lt;file&gt;&#8230;&#8203;</dt>
-<dd>
-<p>Inject changes from specific files or directories into the target.
-This option cannot be used with <code>--working-tree</code>, <code>--staged</code>, or an explicit <code>&lt;patch&gt;</code>.</p>
-<div class="paragraph">
-<p>To add more options after the file list is concluded, you must use the <code>--</code> operator to signify the end of the list. An example is provided below.</p>
-</div>
-<div class="literalblock">
-<div class="content">
-<pre>git inject --file gesture.c include/ -- --into feature/gesture</pre>
-</div>
-</div>
-<div class="paragraph">
-<p>See also INCOMPATIBLE OPTIONS below.</p>
-</div>
 </dd>
 <dt class="hdlist1">--revert</dt>
 <dd>
@@ -1056,6 +737,319 @@ This action will not recover uncommitted changes before the injection when using
 </div>
 </div>
 <div class="sect1">
+<h2 id="_cross_branch_injection">CROSS-BRANCH INJECTION</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>There are two methods to inject changes into other branches:
+a regular injection, where the patch commit will be removed from the history of the donor and applied to the target commit on the specified branch; and
+a direct copy of the patch commit changes, where the specified patch commit will not be removed but instead have the diffs copied into the target commit.</p>
+</div>
+<div class="paragraph">
+<p>Here&#8217;s how you would inject changes into a target commit on a different branch.</p>
+</div>
+<div class="paragraph">
+<p>First let&#8217;s assume that you have a branch <code>topic</code> which is based on branch <code>master</code>.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre>    A---B---C---D---E  master
+             \
+              A---B---C  topic</pre>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_horizontal_transplant">Horizontal transplant</h3>
+<div class="paragraph">
+<p>Suppose you want to inject the last commit of the <code>topic</code> branch into commit <code>D</code> on the <code>master</code> branch:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre>    A---B---C-------D---E  master
+             \      ^
+              \   target
+               \
+                A---B---C  topic
+                        ^
+                      patch</pre>
+</div>
+</div>
+<div class="paragraph">
+<p>the command</p>
+</div>
+<div class="literalblock">
+<div class="content">
+<pre>git inject D topic --branch master</pre>
+</div>
+</div>
+<div class="paragraph">
+<p>first performs a switch to the <code>master</code> branch then injects the changes from the <code>topic</code> branch which results in:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre>    A---B---C---D'---E'  master
+             \
+              A---B  topic</pre>
+</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_grafting_commits">Grafting commits</h3>
+<div class="paragraph">
+<p>Suppose you want to copy the changes of commit <code>D</code> on the <code>master</code> branch to commit <code>B</code> on <code>topic</code>:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre>    A---B---C-------D---E  HEAD  master
+             \      ^
+              \   patch
+               \
+                A---B---C  topic
+                    ^
+                  target</pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The command</p>
+</div>
+<div class="literalblock">
+<div class="content">
+<pre>git inject B D --branch topic --copy</pre>
+</div>
+</div>
+<div class="paragraph">
+<p>would result in:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre>    A---B---C---D---E  master
+             \
+              A---B'---C'  topic</pre>
+</div>
+</div>
+<div class="paragraph">
+<p><code>B'</code> now contains the combined changes of <code>B</code> and <code>D</code>, while <code>D</code> is retained in the <code>master</code> branch history instead of removed.</p>
+</div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<div class="title">Note</div>
+</td>
+<td class="content">
+When <code>--copy</code> is specified, <code>--branch</code> must also be specified.
+Copying commits within the same branch is not permitted; and copying uncommitted changes is not possible.
+</td>
+</tr>
+</table>
+</div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_uncommitted_changes">UNCOMMITTED CHANGES</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>To inject uncommitted changes into an older commit, we use the <code>--working-tree</code> option to include all changes directly from our working directory, the <code>--staged</code> option for only selected changes to be injected or <code>--files</code> to only inject changes from specific files in the repository.</p>
+</div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<div class="title">Note</div>
+</td>
+<td class="content">
+If the target commit is <code>HEAD</code>, <code>git inject</code> will amend the commit at <code>HEAD</code> instead of performing a rebase operation.
+</td>
+</tr>
+</table>
+</div>
+<div class="paragraph">
+<p>Assume the following history, where you have uncommitted changes in your working directory which you want to inject into commit <code>C</code>:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre>    A---B---C---D---E  HEAD  +  M/A/D/??  (Uncommitted changes)
+            ^
+          target</pre>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_staged_changes">Staged changes</h3>
+<div class="paragraph">
+<p>After adding the selected changes to the index, running either of the following commands:</p>
+</div>
+<div class="literalblock">
+<div class="content">
+<pre>git inject --staged C
+git inject -s C</pre>
+</div>
+</div>
+<div class="paragraph">
+<p>would result in:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre>    A---B---C'---D'---E'  HEAD  +  M/A/D/??  (Uncommitted changes)</pre>
+</div>
+</div>
+<div class="paragraph">
+<p><code>C'</code> now contains the original changes of <code>C</code> plus the staged changes.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_working_tree_changes">Working tree changes</h3>
+<div class="paragraph">
+<p>Running either of the following commands:</p>
+</div>
+<div class="literalblock">
+<div class="content">
+<pre>git inject --working-tree C
+git inject -w C</pre>
+</div>
+</div>
+<div class="paragraph">
+<p>would result in:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre>    A---B---C'---D'---E'  HEAD</pre>
+</div>
+</div>
+<div class="paragraph">
+<p><code>C'</code> now contains the original changes of <code>C</code> plus the uncommitted changes. The working tree is cleaned up automatically.</p>
+</div>
+<div class="admonitionblock caution">
+<table>
+<tr>
+<td class="icon">
+<div class="title">Caution</div>
+</td>
+<td class="content">
+<code>--working-tree</code> will commit <strong>everything</strong> in your current git repository.
+Understand the risks before using this option.
+If unsure, add your changes to the index and use <code>--staged</code> instead.
+</td>
+</tr>
+</table>
+</div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_root_commit_injection">ROOT COMMIT INJECTION</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p><code>git-inject</code> handles the special case of injecting changes into the very first commit of a repository (the root commit).</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre>    R---A---B---C  HEAD
+    ^       ^
+  target  patch</pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Running the command</p>
+</div>
+<div class="literalblock">
+<div class="content">
+<pre>git inject R B</pre>
+</div>
+</div>
+<div class="paragraph">
+<p>results in:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre>    R'---A'---C'  HEAD</pre>
+</div>
+</div>
+<div class="paragraph">
+<p>where <code>R'</code> is the new root commit containing the original <code>R</code> plus the changes from <code>B</code>.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_empty_commits">EMPTY COMMITS</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>Suppose you have a history that looks like this:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre>    A---B---Z---C  HEAD
+            ^
+          target (fix: a minor bug)</pre>
+</div>
+</div>
+<div class="paragraph">
+<p>where <code>Z</code> is an empty commit (or placeholder) for unfinished fixes.</p>
+</div>
+<div class="paragraph">
+<p>After the fix has been confirmed to be working correctly with your feature, you can inject the changes using either one of the following commands based on your workflow:</p>
+</div>
+<div class="literalblock">
+<div class="content">
+<pre>git inject -w Z --is-empty
+git inject -s Z --is-empty
+git inject Z --file source.c -- --is-empty</pre>
+</div>
+</div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<div class="title">Note</div>
+</td>
+<td class="content">
+<code>--is-empty</code> is required if the commit was originally empty before the injection.
+</td>
+</tr>
+</table>
+</div>
+<div class="paragraph">
+<p>After injection, the result would be:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre>    A---B---Z'---C'  HEAD</pre>
+</div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_conflict_resolution">CONFLICT RESOLUTION</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>In case of conflict, <code>git inject</code> works in the same as <code>git rebase</code> and will stop at the first problematic commit and leave conflict markers in the tree (see <a href="git-rebase.html">git-rebase(1)</a>).</p>
+</div>
+<div class="paragraph">
+<p>After resolving the conflict manually and updating the index with the desired resolution, you can continue the injection process with</p>
+</div>
+<div class="literalblock">
+<div class="content">
+<pre>git inject --continue</pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Alternatively, you can stop the injection process with</p>
+</div>
+<div class="literalblock">
+<div class="content">
+<pre>git inject --abort</pre>
+</div>
+</div>
+<div class="paragraph">
+<p>If the injection was flawed or you want to completely undo the injection, you can revert the injection with</p>
+</div>
+<div class="literalblock">
+<div class="content">
+<pre>git inject --revert</pre>
+</div>
+</div>
+</div>
+</div>
+<div class="sect1">
 <h2 id="_examples">EXAMPLES</h2>
 <div class="sectionbody">
 <div class="paragraph">
@@ -1098,7 +1092,7 @@ git inject HEAD~7 HEAD^</pre>
 </div>
 <div class="literalblock">
 <div class="content">
-<pre>git inject -w
+<pre>git inject --working-tree
 git inject -w fe8fd5d</pre>
 </div>
 </div>
@@ -1107,7 +1101,8 @@ git inject -w fe8fd5d</pre>
 </div>
 <div class="literalblock">
 <div class="content">
-<pre>git inject --staged fe8fd5d</pre>
+<pre>git inject -s
+git inject --staged fe8fd5d</pre>
 </div>
 </div>
 <div class="paragraph">
@@ -1134,13 +1129,18 @@ git inject --continue</pre>
 <h2 id="_injecting_merge_commits">INJECTING MERGE COMMITS</h2>
 <div class="sectionbody">
 <div class="paragraph">
-<p>Not officially supported.</p>
+<p>Not officially supported.
+Will not be tested.
+Not recommended.</p>
 </div>
 </div>
 </div>
 <div class="sect1">
 <h2 id="_notes">NOTES</h2>
 <div class="sectionbody">
+<div class="paragraph">
+<p>It is recommended to use <code>git-inject</code> for shallow fixes and patchwork in commits on local repositories and personal or private branches where the others are not basing their work, and quick cleaning of commits in the git tree before pushing upstream.</p>
+</div>
 <div class="paragraph">
 <p>You should understand the implications of using git inject on a repository that you share.
 See also RECOVERING FROM UPSTREAM REBASE in <a href="git-rebase.html">git-rebase(1)</a>.</p>
@@ -1156,27 +1156,22 @@ See also RECOVERING FROM UPSTREAM REBASE in <a href="git-rebase.html">git-rebase
 <div class="paragraph">
 <p><code>git-inject</code> safeguards to prevent data loss or repository corruption:</p>
 </div>
-<div class="dlist">
-<dl>
-<dt class="hdlist1">Ancestry Guard</dt>
-<dd>
-<p>Will refuse execution if the target commit is not an ancestor of the patch commit, or if they do not exist on the target branch.
-Traveling forward breaks the Git DAG.</p>
-</dd>
-<dt class="hdlist1">Stashing</dt>
-<dd>
+<div class="ulist">
+<ul>
+<li>
+<p>Refuse execution if the target commit is not an ancestor of the patch commit, or if they do not exist on the target branch.</p>
+</li>
+<li>
 <p>Uncommitted working directory changes are automatically stashed before the operation begins and popped when the operation completes successfully or is aborted.</p>
-</dd>
-<dt class="hdlist1">Backup HEAD</dt>
-<dd>
-<p>Before any history rewriting begins, the current <code>HEAD</code> pointer is saved.
+</li>
+<li>
+<p>Before any history rewriting begins, the current <code>HEAD</code> pointer is backed up.
 If <code>--abort</code> is triggered, the repository is hard-reset to this exact pointer.</p>
-</dd>
-<dt class="hdlist1">Detached HEAD Protection</dt>
-<dd>
-<p>The command will refuse to run if you are not currently on a named branch.</p>
-</dd>
-</dl>
+</li>
+<li>
+<p>Refuse to run if <code>HEAD</code> is detached (not on a named branch).</p>
+</li>
+</ul>
 </div>
 </div>
 </div>
@@ -1230,7 +1225,7 @@ Avoid using this command on shared public branches where other developers are ac
 </div>
 </div>
 <div class="sect1">
-<h2 id="_sandbox">SANDBOX</h2>
+<h2 id="_sandbox_testing">SANDBOX &amp; TESTING</h2>
 <div class="sectionbody">
 <div class="paragraph">
 <p>To create a temporary sandbox to test the command, download the repository then run</p>
@@ -1243,7 +1238,7 @@ Avoid using this command on shared public branches where other developers are ac
 </div>
 <div class="paragraph">
 <p>and navigate to the generated <code>git-inject-sandbox/</code> folder and open the git project.
-The sandbox is crated with six branches, two of which are orphan branches and the other four are split between the orphans, two each.
+The sandbox is crated with six branches, two of which are orphan branches with other four split between the orphans, two each.
 The included files are designed to be distinguishable from each other by file extension.</p>
 </div>
 <div class="paragraph">
@@ -1262,7 +1257,19 @@ The included files are designed to be distinguishable from each other by file ex
 </div>
 </div>
 <div class="paragraph">
-<p>The tree is truncated to cut down unnecessary empty space.</p>
+<p>The tree is truncated to save space.</p>
+</div>
+<div class="paragraph">
+<p>A predefined suite of tests can be run with</p>
+</div>
+<div class="literalblock">
+<div class="content">
+<pre>chmod +x ./test/evaluation
+./test/evaluation</pre>
+</div>
+</div>
+<div class="paragraph">
+<p>to test the functionality of <code>git inject</code>.</p>
 </div>
 </div>
 </div>
@@ -1289,7 +1296,7 @@ This is a third-party tool.</p>
 </div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2026-05-12 17:22:59 +0800
+Last updated 2026-07-12 07:03:16 UTC
 </div>
 </div>
 </body>
