@@ -1,0 +1,48 @@
+name: Software Release
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'git-inject'
+  workflow_dispatch:
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Get latest version tag
+        run: |
+          git fetch --tags
+          LATEST_TAG=$(git tag | grep -E "^v[0-9]+\.[0-9]+\.[0-9]+$" | sort -V | tail -n 1)
+          if [ -z "$LATEST_TAG" ]; then
+            printf "error: unable to locate latest tag\n"
+            exit 1
+          fi
+
+          # Get the commit hash for the tag
+          TARGET_COMMITISH=$(git rev-parse "$LATEST_TAG")
+
+          echo "LATEST_TAG=$LATEST_TAG" >> $GITHUB_ENV
+          echo "TARGET_COMMITISH=$TARGET_COMMITISH" >> $GITHUB_ENV
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ env.LATEST_TAG }}
+          name: Release ${{ env.LATEST_TAG }}
+          target_commitish: ${{ env.TARGET_COMMITISH }}
+          body: |
+            View the HTML documentation [here](https://cdn.clitson.nl/git-inject/docs).
+          files: |
+            git-inject
+          draft: false
+          prerelease: false
+          make_latest: true
