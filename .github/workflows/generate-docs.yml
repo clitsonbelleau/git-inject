@@ -40,3 +40,34 @@ jobs:
           else
             echo "No changes to commit"
           fi
+
+      - name: Get latest doc tag
+        run: |
+          git fetch --tags
+          LATEST_TAG=$(git tag | grep -E "^doc-[0-9]{4}[0-9]{2}[0-9]{2}$" | sort -t '-' -k 2 -n | tail -n 1)
+          if [ -z "$LATEST_TAG" ]; then
+            printf "error: unable to locate latest tag"
+            exit 1
+          fi
+
+          # Get the commit hash for the tag
+          TARGET_COMMITISH=$(git rev-parse "$LATEST_TAG")
+
+          echo "LATEST_TAG=$LATEST_TAG" >> $GITHUB_ENV
+          echo "TARGET_COMMITISH=$TARGET_COMMITISH" >> $GITHUB_ENV
+
+      - name: Create PDF Manual Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ env.LATEST_TAG }}
+          name: PDF Manual (${{ env.LATEST_TAG }})
+          target_commitish: ${{ env.TARGET_COMMITISH }}
+          body: |
+            PDF Manual for git-inject.
+
+            View the HTML documentation [here](https://cdn.clitson.nl/git-inject/docs).
+          files: |
+            git-inject.pdf
+          draft: false
+          prerelease: false
+          make_latest: false
