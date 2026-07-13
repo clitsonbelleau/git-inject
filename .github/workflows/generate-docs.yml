@@ -28,6 +28,14 @@ jobs:
         run: |
           bash ./gen
 
+      - name: Import GPG key
+        uses: crazy-max/ghaction-import-gpg@v6
+        with:
+          gpg_private_key: ${{ secrets.GPG_PRIVATE_KEY }}
+          passphrase: ${{ secrets.GPG_PASSPHRASE }}
+          git_user_signingkey: true
+          git_commit_gpgsign: true
+
       - name: Commit and Push changes
         run: |
           git config --global user.name "cbsggl-bot"
@@ -35,7 +43,7 @@ jobs:
           git add git-inject.1 git-inject.html
 
           if ! git diff --cached --quiet; then
-            git commit -m "docs: auto-generate documentation"
+            git commit -S -m "docs: auto-generate documentation"
             git push origin HEAD
           else
             echo "No changes to commit"
