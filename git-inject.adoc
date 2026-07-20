@@ -127,10 +127,7 @@ See also INCOMPATIBLE OPTIONS below.
 --file [FILE...]::
     Inject changes from specific files or directories into the target.
     This option cannot be used with `--working-tree`, `--staged`, or an explicit `<patch>`.
-+
-To add more options after the file list is concluded, you must use the `--` operator to signify the end of the list. An example is provided below.
-
-    git inject --file gesture.c include/ -- --into feature/gesture
+    git inject --file gesture.c include/ --into feature/gesture
 +
 See also INCOMPATIBLE OPTIONS below.
 
@@ -342,7 +339,7 @@ After the fix has been confirmed to be working correctly with your feature, you 
 
     git inject -w Z --is-empty
     git inject -s Z --is-empty
-    git inject Z --file source.c -- --is-empty
+    git inject Z --file source.c --is-empty
 
 [NOTE]
 `--is-empty` is required if the commit was originally empty before the injection.
