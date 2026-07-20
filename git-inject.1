@@ -2,12 +2,12 @@
 .\"     Title: git-inject
 .\"    Author: Clitson Belleau
 .\" Generator: Asciidoctor 2.0.20
-.\"      Date: 2026-07-12
+.\"      Date: 2026-07-20
 .\"    Manual: Git Manual
 .\"    Source: Git
 .\"  Language: English
 .\"
-.TH "GIT\-INJECT" "1" "2026-07-12" "Git" "Git Manual"
+.TH "GIT\-INJECT" "1" "2026-07-20" "Git" "Git Manual"
 .ie \n(.g .ds Aq \(aq
 .el       .ds Aq '
 .ss \n[.ss] 0
@@ -209,16 +209,7 @@ Does not alter script operation.
 .RS 4
 Inject changes from specific files or directories into the target.
 This option cannot be used with \f(CR\-\-working\-tree\fP, \f(CR\-\-staged\fP, or an explicit \f(CR<patch>\fP.
-.sp
-To add more options after the file list is concluded, you must use the \f(CR\-\-\fP operator to signify the end of the list. An example is provided below.
-.sp
-.if n .RS 4
-.nf
-.fam C
-git inject \-\-file gesture.c include/ \-\- \-\-into feature/gesture
-.fam
-.fi
-.if n .RE
+git inject \-\-file gesture.c include/ \-\-into feature/gesture
 .sp
 See also INCOMPATIBLE OPTIONS below.
 .RE
@@ -612,7 +603,7 @@ After the fix has been confirmed to be working correctly with your feature, you 
 .fam C
 git inject \-w Z \-\-is\-empty
 git inject \-s Z \-\-is\-empty
-git inject Z \-\-file source.c \-\- \-\-is\-empty
+git inject Z \-\-file source.c \-\-is\-empty
 .fam
 .fi
 .if n .RE

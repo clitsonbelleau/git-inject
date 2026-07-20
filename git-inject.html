@@ -625,15 +625,8 @@ Does not alter script operation.</p>
 <dt class="hdlist1">--file [FILE&#8230;&#8203;]</dt>
 <dd>
 <p>Inject changes from specific files or directories into the target.
-This option cannot be used with <code>--working-tree</code>, <code>--staged</code>, or an explicit <code>&lt;patch&gt;</code>.</p>
-<div class="paragraph">
-<p>To add more options after the file list is concluded, you must use the <code>--</code> operator to signify the end of the list. An example is provided below.</p>
-</div>
-<div class="literalblock">
-<div class="content">
-<pre>git inject --file gesture.c include/ -- --into feature/gesture</pre>
-</div>
-</div>
+This option cannot be used with <code>--working-tree</code>, <code>--staged</code>, or an explicit <code>&lt;patch&gt;</code>.
+git inject --file gesture.c include/ --into feature/gesture</p>
 <div class="paragraph">
 <p>See also INCOMPATIBLE OPTIONS below.</p>
 </div>
@@ -992,7 +985,7 @@ If unsure, add your changes to the index and use <code>--staged</code> instead.
 <div class="content">
 <pre>git inject -w Z --is-empty
 git inject -s Z --is-empty
-git inject Z --file source.c -- --is-empty</pre>
+git inject Z --file source.c --is-empty</pre>
 </div>
 </div>
 <div class="admonitionblock note">
@@ -1296,7 +1289,7 @@ This is a third-party tool.</p>
 </div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2026-07-12 07:03:16 UTC
+Last updated 2026-07-20 09:12:16 UTC
 </div>
 </div>
 </body>
